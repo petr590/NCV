@@ -89,7 +89,7 @@ int main(int argc, const char* args[]) {
 			break;
 		
 		default:
-			cerr << "Usage: " << args[0] << " <image>" << endl;
+			cerr << "Usage: " << args[0] << " [image|directory]" << endl;
 			return 1;
 	}
 
@@ -157,7 +157,9 @@ int main(int argc, const char* args[]) {
 	curs_set(false);
 	noecho();
 	keypad(stdscr, true);
-	set_escdelay(0);
+
+	// Убираем задержку при нажатии Esc
+	set_escdelay(0); // Если этой функции нет в вашем ncurses, закомментируйте эту строку
 
 
 	for (;;) {
