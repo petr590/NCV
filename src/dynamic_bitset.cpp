@@ -1,9 +1,9 @@
-#ifndef NCV_DYNAMIC_BITSET
-#define NCV_DYNAMIC_BITSET
+#ifndef NCV_DYNAMIC_BITSET_CPP
+#define NCV_DYNAMIC_BITSET_CPP
 
+#include "ncv_assert.h"
 #include <vector>
 #include <cstdint>
-#include <cassert>
 
 namespace ncv {
 	using std::vector;
@@ -29,10 +29,12 @@ namespace ncv {
 		size_t count() const {
 			size_t res = 0;
 
-			for (entry entry : data) {
-				while (entry != 0) {
-					res += entry & 0x1;
-					entry >>= 1;
+			for (size_t i = 0, size = data.size(); i < size; ++i) {
+				entry e = data[i];
+
+				while (e != 0) {
+					res += e & 0x1;
+					e >>= 1;
 				}
 			}
 
@@ -65,18 +67,22 @@ namespace ncv {
 		
 
 
-		bit operator[](size_t index) {
-			assert(static_cast<int64_t>(index) >= 0);
-			assert(index < len);
-			return bit(data[index / sizeof(entry)], index % sizeof(entry));
+		bool at(size_t index) const {
+			ASSERT(static_cast<int64_t>(index) >= 0);
+			ASSERT(index < len);
+			return data[index / sizeof(entry)] << (index % sizeof(entry));
 		}
 
-		bool operator[](size_t index) const {
-			assert(static_cast<int64_t>(index) >= 0);
-			assert(index < len);
-			return data[index / sizeof(entry)] << (index % sizeof(entry));
+		inline bool operator[](size_t index) const {
+			return at(index);
+		}
+
+		bit operator[](size_t index) {
+			ASSERT(static_cast<int64_t>(index) >= 0);
+			ASSERT(index < len);
+			return bit(data[index / sizeof(entry)], index % sizeof(entry));
 		}
 	};
 }
 
-#endif
+#endif /* NCV_DYNAMIC_BITSET_CPP */

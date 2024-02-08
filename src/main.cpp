@@ -1,66 +1,272 @@
 #include "image_entry.cpp"
-#include <string>
+#include "files.cpp"
+#include "default_colors.cpp"
 #include <iostream>
-#include <filesystem>
-
+#include <csignal>
 
 namespace ncv {
-	using std::string;
+	using std::tuple;
+	using std::tie;
+	
+	using std::to_wstring;
 
-	inline bool stringEndsWith(const string& str, const string& ending) {
-		size_t	ssize = str.size(),
-				esize = ending.size();
-		return ssize >= esize && str.compare(ssize - esize, esize, ending) == 0;
+	using std::cerr;
+	using std::endl;
+
+
+	tuple<int, int, int, int> alert(const wstring& message) {
+		int width = 0,
+			height = 0;
+
+		int lineWidth = 0,
+			maxLineWidth = COLS - 2;
+		
+		vector<pair<int, int>> breaks;
+
+		for (int p = 0, i = 0, size = message.size(); i <= size; ++i) {
+			wchar_t ch = message[i];
+
+			bool isEol = ch == L'\n' || ch == L'\0';
+
+			if (!isEol) {
+				lineWidth += 1;
+			}
+
+			if (isEol || lineWidth == maxLineWidth) {
+				width = max(width, lineWidth);
+
+				lineWidth = 0;
+				height += 1;
+
+				int np = isEol ? i - 1 : i;
+				breaks.push_back({p, np});
+				p = i + 1;
+			}
+		}
+
+		int tx = max((COLS - width) / 2, 1),
+			ty = max((LINES - height) / 2, 1);
+
+		int sx = tx - 1,
+			sy = ty - 1,
+			ex = tx + width,
+			ey = ty + height;
+
+
+		int y = ty;
+		for (const auto& entry : breaks) {
+			int l = entry.second - entry.first + 1;
+
+			mvaddnwstr(y, tx, message.c_str() + entry.first, l);
+
+			for (l += tx; l < ex; ++l) {
+				addch(' ');
+			}
+
+			y += 1;
+		}
+
+		
+		mvaddch(sy, sx, ACS_ULCORNER);
+		mvaddch(sy, ex, ACS_URCORNER);
+		mvaddch(ey, sx, ACS_LLCORNER);
+		mvaddch(ey, ex, ACS_LRCORNER);
+
+		for (int x = tx; x < ex; ++x) {
+			mvaddch(sy, x, ACS_HLINE);
+			mvaddch(ey, x, ACS_HLINE);
+		}
+
+		for (int y = ty; y < ey; ++y) {
+			mvaddch(y, sx, ACS_VLINE);
+			mvaddch(y, ex, ACS_VLINE);
+		}
+
+		return {sx, sy, ex, ey};
 	}
 
 
-	namespace fs = std::filesystem;
+	void draw(vector<ImageEntry>& images, const vector<File>& files, int index) {
+		
+		clear();
 
-	struct ColorContent {
-		short r, g, b;
+		ImageEntry& image = images[index];
 
-		ColorContent() {}
-
-		ColorContent(int index) {
-			color_content(index, &r, &g, &b);
-		}
-	};
-
-	struct PairContent {
-		short fg, bg;
-
-		PairContent() {}
-
-		PairContent(int index) {
-			pair_content(index, &fg, &bg);
-		}
-	};
-
-
-	vector<ColorContent> defaultColors;
-	vector<PairContent> defaultColorPairs;
-
-	void initDefaultColors() {
-		defaultColors.resize(COLORS);
-		defaultColorPairs.resize(COLOR_PAIRS);
-
-		for (int i = 0; i < COLORS; ++i) {
-			defaultColors[i] = ColorContent(i);
+		if (image.empty()) {
+			image.load(files[index].path().string().c_str());
 		}
 
-		for (int i = 0; i < COLOR_PAIRS; ++i) {
-			defaultColorPairs[i] = PairContent(i);
+		if (!image.success()) {
+			resetColors();
+			alert(L"Cannot load image \"" + files[index].wpath() + L'"');
+
+		} else {
+			rgb_t background = defaultColors[0].toRgb();
+
+			// Провести ресайзинг и квантизацию если размеры окна изменились
+			image.process(screenWidthPixels(), screenHeightPixels(), COLORS, background);
+
+			image.initColors(background);
+			image.draw();
+		}
+
+		refresh();
+	}
+
+
+	void redraw(ImageEntry& image, int sx, int sy, int ex, int ey) {
+		if (image.success()) {
+			attrset(0);
+
+			for (int y = sy; y <= ey; ++y) {
+				move(y, sx);
+
+				for (int x = sx; x <= ex; ++x) {
+					addch(' ');
+				}
+			}
+
+			image.draw(sx, sy, ex + 1, ey + 1);
+
+		} else {
+			for (int y = sy; y <= ey; ++y) {
+				move(y, sx);
+
+				for (int x = sx; x <= ex; ++x) {
+					addch(' ');
+				}
+			}
 		}
 	}
 
-	void resetColors() {
-		for (int i = 0, size = defaultColors.size(); i < size; ++i) {
-			init_color(i, defaultColors[i].r, defaultColors[i].g, defaultColors[i].b);
+
+	#define LN L"\n"
+
+	enum Shown {
+		NONE,
+		HELP,
+		FILE_INFO
+	};
+
+
+	void run(const vector<File>& files, int index) {
+		vector<ImageEntry> images(files.size());
+
+		draw(images, files, index);
+
+		int lines = LINES,
+			cols = COLS;
+		
+		Shown shown = NONE;
+		
+		int sx = 0, sy = 0,
+			ex = 0, ey = 0;
+
+		for (;;) {
+			int oldIndex = index;
+			bool needRedraw = false;
+
+			switch (getch()) {
+				case KEY_LEFT: case 'a':
+					index = (index + files.size() - 1) % files.size();
+					break;
+				
+				case KEY_RIGHT: case 'd':
+					index = (index + 1) % files.size();
+					break;
+				
+				case 's':
+					images[index].toggleNoise();
+					needRedraw = true;
+					break;
+				
+				case 'e':
+					squeezed = !squeezed;
+					needRedraw = true;
+					break;
+				
+				case 'r':
+					needRedraw = true;
+					break;
+				
+				case 'w':
+					redraw(images[index], sx, sy, ex, ey);
+					
+					if (shown != FILE_INFO) {
+						tie(sx, sy, ex, ey) = alert(
+							L"File: " + files[index].wpath() + LN
+							L"Size: " + to_wstring(files[index].size()) + L" B" LN
+							L"Colors: " + to_wstring(images[index].getColorTable().size()) +
+								L" / " + to_wstring(COLORS) +
+							(images[index].quantized() ? LN L"quantized" : LN L"not quantized")
+						);
+
+						shown = FILE_INFO;
+
+					} else {
+						sx = sy = ex = ey = 0;
+						shown = NONE;
+					}
+
+					break;
+				
+				case KEY_F(1):
+					redraw(images[index], sx, sy, ex, ey);
+
+					if (shown != HELP) {
+						tie(sx, sy, ex, ey) = alert(
+							L"-> | D - следующее изображение" LN
+							L"<- | A - предыдущее изображение" LN
+							L"W - информация о текущем изображении" LN
+							L"S - добавить/убрать шум" LN
+							L"E - использовать 2.5 символа вместо 2 на 1 пиксель" LN
+							L"R - перерисовать изображение" LN
+							L"Q | Esc - выход"
+						);
+
+						shown = HELP;
+
+					} else {
+						sx = sy = ex = ey = 0;
+						shown = NONE;
+					}
+
+					break;
+				
+				case 27: {
+					nodelay(stdscr, true);
+					int ch = getch();
+					nodelay(stdscr, false);
+
+					if (ch == -1) { // Escape
+						return;
+					}
+
+					break;
+				}
+				
+				case 'q':
+					return;
+			}
+			
+			if (lines != LINES || cols != COLS || oldIndex != index || needRedraw) {
+				draw(images, files, index);
+				lines = LINES;
+				cols = COLS;
+				shown = NONE;
+			}
+		}
+	}
+
+
+	using std::signal;
+
+	void onError(int signum) {
+		if (!isendwin()) {
+			ncurses_end();
 		}
 
-		for (int i = 0, size = defaultColorPairs.size(); i < size; ++i) {
-			init_pair(i, defaultColorPairs[i].fg, defaultColorPairs[i].bg);
-		}
+		signal(signum, SIG_DFL);
 	}
 }
 
@@ -68,21 +274,27 @@ namespace ncv {
 int main(int argc, const char* args[]) {
 	using namespace ncv;
 
+	setlocale(LC_ALL, "");
+
 	srand(time(NULL));
 
 
-	string directory;
+	signal(SIGSEGV, onError);
+	signal(SIGABRT, onError);
+
+
+	string fileOrDir;
 
 	switch (argc) {
 		case 1:
-			directory = ".";
+			fileOrDir = ".";
 			break;
 		
 		case 2:
-			directory = args[1];
+			fileOrDir = args[1];
 
-			if (!fs::exists(directory)) {
-				cerr << "No such file or directory: \"" << directory << '"' << endl;
+			if (!fs::exists(fileOrDir)) {
+				cerr << "No such file or directory: \"" << fileOrDir << '"' << endl;
 				return 1;
 			}
 
@@ -106,138 +318,23 @@ int main(int argc, const char* args[]) {
 	initDefaultColors();
 
 
-	const string extensions[] = { ".png", ".jpg", ".gif", ".bmp", ".psd", ".pic", ".pnm" };
+	vector<File> files;
+	int startIndex;
 
-
-	vector<string> files;
-	int index = 0;
-	string firstFile;
-
-	if (!fs::is_directory(directory)) {
-		firstFile = basename(directory.c_str());
-	
-		directory = directory.substr(0, directory.size() - firstFile.size());
-		
-		if (directory.empty())
-			directory = ".";
-	}
-
-
-	for (const auto& entry : fs::directory_iterator(directory)) {
-		const string& path = entry.path();
-		
-		std::error_code ec; // Ignore errors
-
-		if (fs::is_regular_file(path, ec)) {
-			if (!firstFile.empty() && basename(path.c_str()) == firstFile) {
-				index = files.size();
-				files.push_back(path);
-				continue;
-			}
-
-			for (const string& extension : extensions) {
-				if (stringEndsWith(path, extension)) {
-					files.push_back(path);
-					break;
-				}
-			}
-		}
-	}
+	tie(files, startIndex) = findFiles(fileOrDir);
 
 
 	if (files.empty()) {
 		endwin();
-		cerr << "No images found in directory \"" << directory << '"' << endl;
+		cerr << "No images found in directory \"" << fileOrDir << '"' << endl;
 		return 1;
 	}
 
+	ncurses_start();
 
-	vector<ImageEntry> images(files.size());
+	run(files, startIndex);
 
-	curs_set(false);
-	noecho();
-	keypad(stdscr, true);
-
-	// Убираем задержку при нажатии Esc
-	set_escdelay(0); // Если этой функции нет в вашем ncurses, закомментируйте эту строку
-
-
-	for (;;) {
-		clear();
-
-		ImageEntry& image = images[index];
-
-		if (image.empty()) {
-			image.load(files[index].c_str());
-		}
-
-		if (!image.success()) {
-			resetColors();
-
-			string message = "Cannot load image \"" + files[index] + "\"";
-			
-			int x = (COLS - message.size()) / 2,
-				y = LINES / 2;
-			
-			mvaddstr(y, x, message.c_str());
-
-		} else {
-			// Провести ресайзинг и квантизацию если в первый раз размеры окна изменились
-			image.process(COLS / 2, LINES, COLORS - 1 /* Индекс 0 зарезервирован */);
-
-			const vector<int>& colorTable = image.getColorTable();
-
-			for (int index = 0; index < colorTable.size(); ) {
-				int color = colorTable[index++];
-
-				init_color(index, getR(color) * 1000 / 255, getG(color) * 1000 / 255, getB(color) * 1000 / 255);
-				init_pair(index, index, index);
-			}
-
-			image.draw();
-		}
-
-		refresh();
-
-		switch (getch()) {
-			case KEY_LEFT: case 'a':
-				index = (index + files.size() - 1) % files.size();
-				continue;
-			
-			case KEY_RIGHT: case 'd':
-				index = (index + 1) % files.size();
-				continue;
-			
-			case 's':
-				images[index].toggleNoise();
-				continue;
-			
-			default:
-				continue;
-			
-			case 27: {
-				nodelay(stdscr, true);
-				int ch = getch();
-				nodelay(stdscr, false);
-
-				if (ch == -1) {
-					break;
-				}
-
-				continue;
-			}
-			
-			case 'q':
-				break;
-		}
-
-		break;
-	}
-	
-	keypad(stdscr, false);
-	echo();
-	curs_set(true);
-	endwin();
+	ncurses_end();
 	
 	return 0;
 }

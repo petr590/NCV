@@ -20,6 +20,7 @@
 #pragma GCC diagnostic pop
 
 #include "rgb.cpp"
+#include "ncv_assert.h"
 
 namespace ncv {
 
@@ -128,10 +129,52 @@ namespace ncv {
 			height = newHeight;
 		}
 
-		int pixel(int index) const {
-			assert(index < width * height);
+		rgb_t pixel(int index) const {
+			ASSERT(index < width * height);
 			index *= BPP;
 			return getColor(data[index], data[index + 1], data[index + 2]);
+		}
+
+		rgb_t pixel(int x, int y) const {
+			return pixel(y * width + x);
+		}
+
+		class iterator: std::iterator<std::forward_iterator_tag, rgb_t> {
+			friend class Image;
+
+			uint8_t *data;
+		
+			iterator(uint8_t* data): data(data) {}
+			
+		public:
+			iterator(const iterator& other): data(other.data) {}
+
+			bool operator==(iterator const& other) const {
+				return data == other.data;
+			}
+			
+			bool operator!=(iterator const& other) const {
+				return data != other.data;
+			}
+
+			value_type operator*() const {
+				return getColor(data[0], data[1], data[2]);
+			}
+
+			iterator& operator++() {
+				data += BPP;
+				return *this;
+			}
+		};
+
+		typedef iterator const_iterator;
+
+		const_iterator begin() const {
+			return iterator(data);
+		}
+
+		const_iterator end() const {
+			return iterator(data + width * height * BPP);
 		}
 	};
 }

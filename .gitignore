@@ -5,3 +5,10 @@ CMakeFiles/
 
 bin/
 examples/
+PDCurses/
+windows/
+debug/
+release/
+
+
+*.py
