@@ -117,7 +117,11 @@ namespace ncv {
 			
 			int32_t avg() const {
 				auto c = this->c;
-				return c == 0 ? -1 : getColor(r / c, g / c, b / c);
+				return c == 0 ? -1 : getColor(
+					static_cast<int>(r / c),
+					static_cast<int>(g / c),
+					static_cast<int>(b / c)
+				);
 			}
 
 			int getIndex() const {
@@ -233,43 +237,41 @@ namespace ncv {
 				}
 
 				#if USE_BITSET
-				filledBlocks = used.count();
+				filledBlocks = static_cast<uint32_t>(used.count());
 				#else
-				filledBlocks = used.size();
+				filledBlocks = static_cast<uint32_t>(used.size());
 				#endif
 
 				return filledBlocks * colorsMultiplier() <= colors;
 			}
 
 
-			void __attribute__ ((noinline)) joinBlocks() { // Количество цветов может быть больше, чем colors
+			void joinBlocks() { // Количество цветов может быть больше, чем colors
 				uint32_t filled = filledBlocks;
-				
-				// Таблица смещений координат
-				int offsets[3][3] = {
-				  // x y z
-					{0,0,1},
-					{0,1,0},
-					{1,0,0},
-				};
 
 				// Ищем пару соседних блоков с минимальным кол-вом цветов и объединяем
-				while (filled > colors) {
-					uint64_t minColors = 0x7FFFFFFF;
-					block *minBlk1 = nullptr,
-						  *minBlk2 = nullptr;
+				if (filled > colors) {
+					// Таблица смещений координат
+					const int offsets[3][3] = {
+					//   x y z
+						{0,0,1},
+						{0,1,0},
+						{1,0,0},
+					};
+
+					set<pair<uint64_t, pair<block*, block*>>> pairs;
 					
 					for (int ri = 0; ri < cntR; ++ri) {
 						for (int gi = 0; gi < cntG; ++gi) {
 							for (int bi = 0; bi < cntB; ++bi) {
 								block& blk1 = blocks[ri][gi][bi];
 
-								if (blk1.c == 0 || blk1.joined())
-									continue;
-
 								uint64_t c = blk1.c;
 
-								for (int* offset : offsets) {
+								if (c == 0)
+									continue;
+
+								for (const int* offset : offsets) {
 									int ri2 = ri + offset[0],
 										gi2 = gi + offset[1],
 										bi2 = bi + offset[2];
@@ -277,19 +279,29 @@ namespace ncv {
 									if (ri2 < cntR && gi2 < cntG && bi2 < cntB) {
 										block& blk2 = blocks[ri2][gi2][bi2];
 
-										if (blk2.c > 0 && !blk2.joined() && blk2.c + c < minColors) {
-											minColors = blk2.c + c;
-											minBlk1 = &blk1;
-											minBlk2 = &blk2;
-										}
+										if (blk2.c == 0)
+											continue;
+										
+										pairs.emplace(blk2.c + c, pair<block*, block*>(&blk1, &blk2));
 									}
 								}
 							}
 						}
 					}
 
-					minBlk1->join(minBlk2);
-					filled -= 1;
+					for (const auto& entry : pairs) {
+						const pair<block*, block*>& p = entry.second;
+						
+						if (!p.first->joined() && !p.second->joined()) {
+							p.first->join(p.second);
+							filled -= 1;
+							
+							if (filled <= colors)
+								break;
+						}
+					}
+
+					ASSERT_MESSAGE(filled <= colors, "filled: %d, colors: %d, pairs: %ld of %d", filled, colors, pairs.size(), cntR * cntG * cntB);
 				}
 			}
 
@@ -367,25 +379,25 @@ namespace ncv {
 			}
 
 			
-			static inline float zeroIfNaN(float x) {
-				return isnan(x) ? 0 : x;
+			static inline float divSafe(float x, float d) {
+				return d == 0 ? 0 : x / d;
 			}
 
 
 			int getRi(rgb_t color) const {
-				int i = min(zeroIfNaN((getR(color) - minR) / lenR), cntR - 1.f);
+				int i = static_cast<int>(min(divSafe(getR(color) - minR, lenR), cntR - 1.f));
 				ASSERT(i >= 0);
 				return i;
 			}
 
 			int getGi(rgb_t color) const {
-				int i = min(zeroIfNaN((getG(color) - minG) / lenG), cntG - 1.f);
+				int i = static_cast<int>(min(divSafe(getG(color) - minG, lenG), cntG - 1.f));
 				ASSERT(i >= 0);
 				return i;
 			}
 
 			int getBi(rgb_t color) const {
-				int i = min(zeroIfNaN((getB(color) - minB) / lenB), cntB - 1.f);
+				int i = static_cast<int>(min(divSafe(getB(color) - minB, lenB), cntB - 1.f));
 				ASSERT(i >= 0);
 				return i;
 			}
@@ -398,7 +410,7 @@ namespace ncv {
 
 			map<rgb_t, int> pixelMap;
 			
-			for (int i = 0, s = getWidth() * getHeight(); i < s; ++i) {
+			for (int i = 0, s = getSquare(); i < s; ++i) {
 				pixelMap[pixel(i)] += 1;
 			}
 
@@ -483,7 +495,7 @@ namespace ncv {
 				}
 
 
-				const int size = colorTable.size();
+				const size_t size = colorTable.size();
 				dynamic_bitset usedPairs(size);
 
 				for (const auto& entry : sortedJointCounts) {
@@ -515,14 +527,14 @@ namespace ncv {
 					jointChars[reverseIntPair(pair)] = ch2 | COLOR_PAIR(index);
 				}
 
-				for (int i = 1; i < size; ++i) {
+				for (size_t i = 1; i < size; ++i) {
 					if (!usedPairs.at(i)) {
 						init_pair(i, i, i);
 					}
 				}
 
 
-				for (int index = 1; index < size; ++index) {
+				for (size_t index = 1; index < size; ++index) {
 					rgb_t color = colorTable[index];
 
 					int ret1 = init_color(index, getR(color) * 1000 / 255, getG(color) * 1000 / 255, getB(color) * 1000 / 255);
@@ -531,14 +543,14 @@ namespace ncv {
 				}
 
 			} else {
-				for (int index = 1, size = colorTable.size(); index < size; ++index) {
+				for (size_t index = 1, size = colorTable.size(); index < size; ++index) {
 					rgb_t color = colorTable[index];
 
 					int ret1 = init_color(index, getR(color) * 1000 / 255, getG(color) * 1000 / 255, getB(color) * 1000 / 255);
 					int ret2 = init_pair(index, index, index);
 
-					ASSERT_MESSAGE(ret1 == OK, "%d %d", index, color);
-					ASSERT_MESSAGE(ret2 == OK, "%d", index);
+					ASSERT_MESSAGE(ret1 == OK, "%ld %ld", index, color);
+					ASSERT_MESSAGE(ret2 == OK, "%ld", index);
 				}
 			}
 		}

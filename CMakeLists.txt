@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(NewConsoleViewer VERSION 1.1 LANGUAGES CXX)
+project(NewConsoleViewer VERSION 1.1.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -8,25 +8,25 @@ set(CMAKE_SOURCE_DIR, src)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY .)
 
 add_compile_options(
-#	-Werror
-
 	-Wall
 	-Wextra
 	-Wpedantic
 
 	-Wcast-align
 	-Wcast-qual
-
-#	-Wconversion
-#	-Wsign-conversion
 	-Wenum-compare
-#	-Wfloat-equal
 
 	-Wctor-dtor-privacy
 	-Wnon-virtual-dtor
 	-Woverloaded-virtual
 	-Wredundant-decls
 	-Wsign-promo
+	
+	-Wduplicated-branches
+	-Wduplicated-cond
+	-Wshadow=compatible-local
+	-Wzero-as-null-pointer-constant
+#	-Wconversion
 )
 
 if(NOT CMAKE_BUILD_TYPE MATCHES "Windows")

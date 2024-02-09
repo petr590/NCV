@@ -9,6 +9,8 @@
 #pragma GCC diagnostic ignored "-Wfloat-equal"
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wduplicated-branches"
+#pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -33,10 +35,10 @@ namespace ncv {
 
 	class Image {
 		uint8_t* data;
-		int width, height, bpp;
+		int width, height, square, bpp;
 
 	public:
-		Image(): data(nullptr), width(0), height(0), bpp(0) {}
+		Image(): data(nullptr), width(0), height(0), square(0), bpp(0) {}
 
 		Image(const char* name) {
 			load(name);
@@ -54,6 +56,7 @@ namespace ncv {
 			this->~Image();
 
 			data = stbi_load(name, &width, &height, &bpp, BPP);
+			square = width * height;
 		}
 
 		void copyFrom(const Image& other, int newWidth, int newHeight) {
@@ -62,11 +65,12 @@ namespace ncv {
 			data = resize(other.data, other.width, other.height, newWidth, newHeight);
 			width = newWidth;
 			height = newHeight;
+			square = newWidth * newHeight;
 			bpp = other.bpp;
 		}
 		
 		bool success() const {
-			return data != NULL;
+			return data != nullptr;
 		}
 
 		int getWidth() const {
@@ -75,6 +79,10 @@ namespace ncv {
 
 		int getHeight() const {
 			return height;
+		}
+
+		int getSquare() const {
+			return square;
 		}
 
 	protected:
@@ -86,14 +94,14 @@ namespace ncv {
 		void removeAlpha() {
 			if (bpp == 4) { // alpha channel
 				for (int i = 0, s = width * height * 4; i < s; i += 4) {
-					int a = data[i+3],
-						r = data[i+0],
+					int r = data[i+0],
 						g = data[i+1],
-						b = data[i+2];
+						b = data[i+2],
+						a = data[i+3];
 					
-					data[i+0] = BACKGROUND_R + (r - BACKGROUND_R) * a / 255;
-					data[i+1] = BACKGROUND_G + (g - BACKGROUND_G) * a / 255;
-					data[i+2] = BACKGROUND_B + (b - BACKGROUND_B) * a / 255;
+					data[i+0] = BACKGROUND_R + (r - BACKGROUND_R) * a / 0xFF;
+					data[i+1] = BACKGROUND_G + (g - BACKGROUND_G) * a / 0xFF;
+					data[i+2] = BACKGROUND_B + (b - BACKGROUND_B) * a / 0xFF;
 				}
 
 				bpp = 3;
@@ -130,7 +138,7 @@ namespace ncv {
 		}
 
 		rgb_t pixel(int index) const {
-			ASSERT(index < width * height);
+			ASSERT_MESSAGE(index < square, "index: %d, size: %d", index, square);
 			index *= BPP;
 			return getColor(data[index], data[index + 1], data[index + 2]);
 		}

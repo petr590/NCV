@@ -23,7 +23,7 @@ namespace ncv {
 		
 		vector<pair<int, int>> breaks;
 
-		for (int p = 0, i = 0, size = message.size(); i <= size; ++i) {
+		for (size_t p = 0, i = 0, size = message.size(); i <= size; ++i) {
 			wchar_t ch = message[i];
 
 			bool isEol = ch == L'\n' || ch == L'\0';
@@ -38,8 +38,8 @@ namespace ncv {
 				lineWidth = 0;
 				height += 1;
 
-				int np = isEol ? i - 1 : i;
-				breaks.push_back({p, np});
+				size_t np = isEol ? i - 1 : i;
+				breaks.emplace_back(p, np);
 				p = i + 1;
 			}
 		}
@@ -53,17 +53,17 @@ namespace ncv {
 			ey = ty + height;
 
 
-		int y = ty;
-		for (const auto& entry : breaks) {
-			int l = entry.second - entry.first + 1;
+		{
+			int y = ty;
+			for (const auto& entry : breaks) {
+				int l = entry.second - entry.first + 1;
 
-			mvaddnwstr(y, tx, message.c_str() + entry.first, l);
+				mvaddnwstr(y, tx, message.c_str() + entry.first, l);
 
-			for (l += tx; l < ex; ++l) {
-				addch(' ');
+				for (l += tx; l < ex; ++l) {
+					addch(' ');
+				}
 			}
-
-			y += 1;
 		}
 
 		
@@ -86,7 +86,7 @@ namespace ncv {
 	}
 
 
-	void draw(vector<ImageEntry>& images, const vector<File>& files, int index) {
+	void draw(vector<ImageEntry>& images, const vector<File>& files, size_t index) {
 		
 		clear();
 
@@ -149,7 +149,7 @@ namespace ncv {
 	};
 
 
-	void run(const vector<File>& files, int index) {
+	void run(const vector<File>& files, size_t index) {
 		vector<ImageEntry> images(files.size());
 
 		draw(images, files, index);
@@ -163,7 +163,7 @@ namespace ncv {
 			ex = 0, ey = 0;
 
 		for (;;) {
-			int oldIndex = index;
+			size_t oldIndex = index;
 			bool needRedraw = false;
 
 			switch (getch()) {
@@ -219,7 +219,7 @@ namespace ncv {
 							L"<- | A - предыдущее изображение" LN
 							L"W - информация о текущем изображении" LN
 							L"S - добавить/убрать шум" LN
-							L"E - использовать 2.5 символа вместо 2 на 1 пиксель" LN
+							L"E - использовать 2.5 символа вместо 2 на пиксель" LN
 							L"R - перерисовать изображение" LN
 							L"Q | Esc - выход"
 						);
@@ -319,7 +319,7 @@ int main(int argc, const char* args[]) {
 
 
 	vector<File> files;
-	int startIndex;
+	size_t startIndex;
 
 	tie(files, startIndex) = findFiles(fileOrDir);
 

@@ -2,8 +2,8 @@
 #define NCV_FILES_CPP
 
 #include <string>
-#include <filesystem>
 #include <algorithm>
+#include <filesystem>
 
 namespace ncv {
 	namespace fs = std::filesystem;
@@ -47,9 +47,9 @@ namespace ncv {
 	};
 
 
-	pair<vector<File>, int> findFiles(fs::path fileOrDir) {
+	pair<vector<File>, size_t> findFiles(fs::path fileOrDir) {
 		vector<File> files;
-		int index = 0;
+		size_t index = 0;
 
 		fs::path firstFile;
 
@@ -69,10 +69,8 @@ namespace ncv {
 
 		for (const auto& entry : fs::directory_iterator(fileOrDir)) {
 			const fs::path& path = entry.path();
-			
-			std::error_code ec; // Ignore errors
 
-			if (fs::is_regular_file(path, ec)) {
+			if (fs::is_regular_file(path)) {
 				if (!firstFile.empty() && !firstFileFound && path.filename() == firstFile) {
 					files.push_back(File(path));
 					firstFileFound = true;
@@ -88,7 +86,7 @@ namespace ncv {
 		sort(files.begin(), files.end());
 
 		if (firstFileFound) {
-			for (int i = 0, size = files.size(); i < size; ++i) {
+			for (size_t i = 0, size = files.size(); i < size; ++i) {
 				if (files[i].path().filename() == firstFile) {
 					index = i;
 					break;

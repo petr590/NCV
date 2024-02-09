@@ -50,12 +50,12 @@ namespace ncv {
 	}
 
 	void resetColors() {
-		for (int i = 0, size = defaultColors.size(); i < size; ++i) {
-			init_color(i, defaultColors[i].r, defaultColors[i].g, defaultColors[i].b);
+		for (size_t i = 0, size = defaultColors.size(); i < size; ++i) {
+			init_color(static_cast<short>(i), defaultColors[i].r, defaultColors[i].g, defaultColors[i].b);
 		}
 
-		for (int i = 0, size = defaultColorPairs.size(); i < size; ++i) {
-			init_pair(i, defaultColorPairs[i].fg, defaultColorPairs[i].bg);
+		for (size_t i = 0, size = defaultColorPairs.size(); i < size; ++i) {
+			init_pair(static_cast<short>(i), defaultColorPairs[i].fg, defaultColorPairs[i].bg);
 		}
 	}
 }
