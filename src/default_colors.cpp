@@ -2,7 +2,7 @@
 #define NCV_COLORS_CPP
 
 #include "rgb.cpp"
-#include "ncurses_wrap.cpp"
+#include "ncurses_wrap.h"
 #include <vector>
 
 namespace ncv {

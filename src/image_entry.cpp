@@ -67,7 +67,7 @@ namespace ncv {
 			
 			ASSERT_MESSAGE(
 				colorTableSize <= static_cast<size_t>(maxColors),
-				"Color table size = %llu, maxColors = %d", colorTableSize, maxColors
+				"Color table size = %ld, maxColors = %d", colorTableSize, maxColors
 			);
 
 			needReprocess = false;

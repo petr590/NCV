@@ -52,6 +52,9 @@
 		"typeinfo": "cpp",
 		"bit": "cpp",
 		"cassert": "cpp",
-		"csignal": "cpp"
+		"csignal": "cpp",
+		"cstring": "cpp",
+		"set": "cpp",
+		"dynamic_bitset": "cpp"
 	}
 }

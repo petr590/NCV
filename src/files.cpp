@@ -63,7 +63,7 @@ namespace ncv {
 		}
 
 
-		const vector<string> extensions { ".png", ".jpg", ".gif", ".bmp", ".psd", ".pic", ".pnm" };
+		const vector<string> extensions { ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".psd", ".pic", ".pnm" };
 		bool firstFileFound = false;
 
 

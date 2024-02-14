@@ -1,7 +1,7 @@
 #ifndef NCV_ASSERT
 #define NCV_ASSERT
 
-#include "ncurses_wrap.cpp"
+#include "ncurses_wrap.h"
 #include <cassert>
 #include <cstdlib>
 
@@ -25,6 +25,7 @@ void __ncv_assert_fail(const char* file, unsigned int line, const char* function
 
 #define ASSERT_MESSAGE(expr, ...)\
 		(static_cast<bool>(expr) ? void(0) :\
+		false ? void(printf(__VA_ARGS__)) : /* Для проверки компилятором */ \
 		__ncv_assert_fail_message(__FILE__, __LINE__, __PRETTY_FUNCTION__, __VA_ARGS__))
 
 template<typename... Args>
@@ -43,7 +44,10 @@ void __ncv_assert_fail_message(const char* file, unsigned int line, const char* 
 #else
 
 #define ASSERT(expr) void(expr)
-#define ASSERT_MESSAGE(expr, ...) void(expr, __VA_ARGS__)
+#define ASSERT_MESSAGE(expr, ...) __nothing(expr, __VA_ARGS__)
+
+template<typename... Args>
+inline void __nothing(Args...) {}
 
 #endif /* NDEBUG */
 

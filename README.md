@@ -18,8 +18,8 @@ foo@bar:~/NCV/release$ make
 ```
 
 To build in debug mode, replace 'release' with 'debug'.
-The 'CMAKE_BUILD_TYPE=Windows' option is an assembly along with the PDCurses source code for MinGW.
-The Windows build has not been tested, edit the CMakeLists.txt file for it.
+The 'CMAKE_BUILD_TYPE=MinGW' option is an assembly along with the PDCurses source code for MinGW.
+The build for Windows has not been tested, edit the CMakeLists.txt file to build it.
 
 ## Libraries used
 - **ncursesw** (there is a polyfill for ncurses to output text to wchar_t)
@@ -32,4 +32,6 @@ If the image is compressed in width, turn on the "half characters" mode by press
 If the image is drawn in a corner or with errors, redraw it on <kbd>R</kbd>
 <kbd>W</kbd> - brief information.
 <kbd>S</kbd> - add/remove noise.
+<kbd>B</kbd> - enable/disable large characters (ascii and Russian characters are supported).
+It is necessary for the small scale of the terminal, when the text cannot be read.
 <kbd>F1</kbd> - management help.

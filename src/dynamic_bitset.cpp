@@ -4,13 +4,14 @@
 #include "ncv_assert.h"
 #include <vector>
 #include <cstdint>
+#include <iostream>
 
 namespace ncv {
 	using std::vector;
 
 	class dynamic_bitset {
 		typedef uint64_t entry;
-		static constexpr size_t SIZE = sizeof(entry);
+		static constexpr size_t SIZE = sizeof(entry) * 8;
 
 		vector<entry> data;
 		size_t len;
@@ -70,7 +71,7 @@ namespace ncv {
 		bool at(size_t index) const {
 			ASSERT(static_cast<int64_t>(index) >= 0);
 			ASSERT(index < len);
-			return data[index / sizeof(entry)] << (index % sizeof(entry));
+			return (data[index / SIZE] >> (index % SIZE)) & 0x1;
 		}
 
 		inline bool operator[](size_t index) const {
@@ -80,7 +81,24 @@ namespace ncv {
 		bit operator[](size_t index) {
 			ASSERT(static_cast<int64_t>(index) >= 0);
 			ASSERT(index < len);
-			return bit(data[index / sizeof(entry)], index % sizeof(entry));
+			return bit(data[index / SIZE], index % SIZE);
+		}
+
+		friend std::ostream& operator<<(std::ostream& out, const dynamic_bitset& bitset) {
+			const vector<entry>& data = bitset.data;
+
+			for (size_t i = 0, l = data.size(); i < l; ) {
+				entry e = data[i];
+
+				int s = ++i == l ? (bitset.len - 1) % SIZE + 1 : SIZE;
+
+				for (int j = 0; j < s; ++j) {
+					out << static_cast<char>('0' + (e & 0x1));
+					e >>= 1;
+				}
+			}
+
+			return out;
 		}
 	};
 }

@@ -7,20 +7,11 @@
 #include <vector>
 #include <map>
 #include <set>
+#include <algorithm>
 
 
-#ifdef DEBUG
-
-#include <fstream>
-
-namespace ncv {
-	std::ofstream log("log.txt");
-
-	using std::endl;
-	using std::hex;
-	using std::dec;
-}
-
+#ifndef NDEBUG
+#include "debug.cpp"
 #endif
 
 namespace ncv {
@@ -40,8 +31,6 @@ namespace ncv {
 	
 	const rgb_t BACKGROUND_COLOR = 0x000000,
 				FOREGROUND_COLOR = 0xFFFFFF;
-
-	#define USE_BITSET 1
 	
 
 	class QuantiziedImage: public Image {
@@ -100,7 +89,10 @@ namespace ncv {
 
 	
 		struct block {
-			uint64_t r = 0, g = 0, b = 0, c = 0;
+			uint64_t r = 0,
+					 g = 0,
+					 b = 0,
+					 c = 0;
 
 		private:
 			int index = -1;
@@ -115,7 +107,7 @@ namespace ncv {
 				return index != -1;
 			}
 			
-			int32_t avg() const {
+			rgb_t avg() const {
 				auto c = this->c;
 				return c == 0 ? -1 : getColor(
 					static_cast<int>(r / c),
@@ -145,7 +137,7 @@ namespace ncv {
 			}
 
 			void join(block* other) {
-				ASSERT(!joined() && !other->joined());
+				ASSERT(!this->joined() && !other->joined());
 
 				this->other = other;
 				other->other = this;
@@ -161,7 +153,9 @@ namespace ncv {
 		struct context {
 		private:
 			const map<rgb_t, int>& pixelMap; // Ключ: цвет, значение: количество в изображении
-			const uint32_t colors;
+
+			const uint32_t colors; // Максимальное количество цветов после квантизации 
+
 			const bool skipForeground; // Скипать или нет FOREGROUND_INDEX в таблицах
 
 			int minR = 0xFF, minG = 0xFF, minB = 0xFF;
@@ -219,6 +213,8 @@ namespace ncv {
 			}
 
 
+			#define USE_BITSET 1
+
 			bool hasPlace() {
 				#if USE_BITSET
 				dynamic_bitset used(static_cast<size_t>(cntR) * cntG * cntB);
@@ -244,6 +240,8 @@ namespace ncv {
 
 				return filledBlocks * colorsMultiplier() <= colors;
 			}
+
+			#undef USE_BITSET
 
 
 			void joinBlocks() { // Количество цветов может быть больше, чем colors
@@ -416,7 +414,7 @@ namespace ncv {
 
 			if (pixelMap.size() <= colors) {
 				bool hasForeground = skipForeground && pixelMap.size() > FOREGROUND_INDEX - 1;
-				int colorTableSize = pixelMap.size() + (hasForeground ? 2 : 1);
+				size_t colorTableSize = pixelMap.size() + (hasForeground ? 2 : 1);
 
 				colorTable.resize(colorTableSize);
 				colorTable[BACKGROUND_INDEX] = BACKGROUND_COLOR;
@@ -434,8 +432,8 @@ namespace ncv {
 					++i;
 				}
 
-				ASSERT_MESSAGE(i == colorTableSize,
-						"%d != %d", static_cast<int>(i), colorTableSize);
+				ASSERT_MESSAGE(static_cast<size_t>(i) == colorTableSize,
+						"%d != %ld", static_cast<int>(i), colorTableSize);
 				
 				indexTable = pixelMap;
 				isQuantized = false;
@@ -451,6 +449,7 @@ namespace ncv {
 			isQuantized = true;
 		}
 
+
 		bool isQuantized = false;
 
 		bool quantized() const {
@@ -459,20 +458,19 @@ namespace ncv {
 
 
 	private:
-		map<int_pair, chtype> jointChars;
-
 		static constexpr const wchar_t* JOINT_CHARS[] = { L" ", L"▌", L"▐" };
+		enum { JCH_SPACE, JCH_LEFT, JCH_RIGHT }; // Индексы массива
 
-		enum { JCH_SPACE, JCH_LEFT, JCH_RIGHT };
+		map<int_pair, chtype> jointChars;
 
 	public:
 		void initColors() {
 			const vector<rgb_t>& colorTable = getColorTable();
 
 			if (squeezed && jointChars.empty()) {
-				map<int_pair, int> jointCounts;
-
 				const map<rgb_t, int>& indexTable = this->indexTable;
+				
+				map<int_pair, int> jointCounts;
 
 				const int endX = getWidth() - 1;
 
@@ -505,18 +503,23 @@ namespace ncv {
 						i2 = secondInt(pair);
 					
 					int index;
-					int ch1 = JCH_LEFT,
-						ch2 = JCH_RIGHT; // Индексы в массиве JOINT_CHARS
+					int ch1, ch2; // Индексы в массиве JOINT_CHARS
 					
 					if (!usedPairs.at(i1)) {
 						index = i1;
 						usedPairs[index] = true;
 						init_pair(index, i2, i1); // index, fg, bg
 
+						ch1 = JCH_RIGHT;
+						ch2 = JCH_LEFT;
+
 					} else if (!usedPairs.at(i2)) {
 						index = i2;
 						usedPairs[index] = true;
 						init_pair(index, i1, i2); // index, fg, bg
+
+						ch1 = JCH_LEFT;
+						ch2 = JCH_RIGHT;
 
 					} else {
 						index = i1;
@@ -539,7 +542,7 @@ namespace ncv {
 
 					int ret1 = init_color(index, getR(color) * 1000 / 255, getG(color) * 1000 / 255, getB(color) * 1000 / 255);
 
-					ASSERT_MESSAGE(ret1 == OK, "%d %d", index, color);
+					ASSERT_MESSAGE(ret1 == OK, "%ld %d", index, color);
 				}
 
 			} else {
@@ -549,7 +552,7 @@ namespace ncv {
 					int ret1 = init_color(index, getR(color) * 1000 / 255, getG(color) * 1000 / 255, getB(color) * 1000 / 255);
 					int ret2 = init_pair(index, index, index);
 
-					ASSERT_MESSAGE(ret1 == OK, "%ld %ld", index, color);
+					ASSERT_MESSAGE(ret1 == OK, "%ld %d", index, color);
 					ASSERT_MESSAGE(ret2 == OK, "%ld", index);
 				}
 			}
@@ -566,22 +569,25 @@ namespace ncv {
 		}
 
 
-		inline int getPixelX(int cx) const {
-			return min(getWidth(), max(0, static_cast<int>(ceil((cx - getStartX()) / scaleX()))));
+		inline int getPixelXCeil(int cx) const {
+			return min(getWidth(), max(0, static_cast<int>(ceil((cx - getStartX()) / scaleX() / 2)) * 2));
 		}
 
+		inline int getPixelXFloor(int cx) const {
+			return min(getWidth(), max(0, static_cast<int>(floor((cx - getStartX()) / scaleX() / 2)) * 2));
+		}
 
 		inline int getPixelY(int cy) const {
 			return min(getHeight(), max(0, cy - getStartY()));
 		}
 
+		
+		void drawInChars(int sx, int sy, int ex, int ey) const {
+			draw(getPixelXFloor(sx), getPixelY(sy), getPixelXCeil(ex), getPixelY(ey));
+		}
 
 		void draw() const {
 			draw(0, 0, getWidth(), getHeight());
-		}
-		
-		void drawInChars(int sx, int sy, int ex, int ey) const {
-			draw(getPixelX(sx - 1) & ~0x1, getPixelY(sy), getPixelX(ex), getPixelY(ey));
 		}
 
 		void draw(int sx, int sy, int ex, int ey) const {

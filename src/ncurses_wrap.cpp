@@ -1,7 +1,8 @@
 #ifndef NCV_NCURSES_WRAP_CPP
 #define NCV_NCURSES_WRAP_CPP
 
-#include <ncurses.h>
+#include "ncurses_wrap.h"
+#include <cstdlib>
 
 void ncurses_start() {
 	curs_set(false);
@@ -25,7 +26,7 @@ void ncurses_end() {
 }
 
 
-#ifndef mvaddnwstr // Если ncurses не работает с wchar_t
+#ifdef NEED_MVADDNWSTR_IMPL
 
 int mvaddnwstr(int y, int x, const wchar_t* wstr, int n) {
 	char* str = new char[n * sizeof(wchar_t) + 1];
@@ -35,29 +36,13 @@ int mvaddnwstr(int y, int x, const wchar_t* wstr, int n) {
 	return res;
 }
 
-#define mvaddnwstr mvaddnwstr
+#undef NEED_MVADDNWSTR_IMPL
 
 #endif
 
 
 namespace ncv {
-
-	float DEFAULT_X_SCALE  = 2.0f,
-		  SQUEEZED_X_SCALE = 2.5f;
-
 	bool squeezed = false;
-
-	inline float scaleX() {
-		return squeezed ? SQUEEZED_X_SCALE : DEFAULT_X_SCALE;
-	}
-
-	inline int screenWidthPixels() {
-		return static_cast<int>(COLS / scaleX());
-	}
-
-	inline int screenHeightPixels() {
-		return LINES;
-	}
 }
 
 

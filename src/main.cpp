@@ -1,89 +1,16 @@
 #include "image_entry.cpp"
 #include "files.cpp"
 #include "default_colors.cpp"
+#include "alert.h"
 #include <iostream>
 #include <csignal>
 
 namespace ncv {
-	using std::tuple;
 	using std::tie;
-	
 	using std::to_wstring;
 
 	using std::cerr;
 	using std::endl;
-
-
-	tuple<int, int, int, int> alert(const wstring& message) {
-		int width = 0,
-			height = 0;
-
-		int lineWidth = 0,
-			maxLineWidth = COLS - 2;
-		
-		vector<pair<int, int>> breaks;
-
-		for (size_t p = 0, i = 0, size = message.size(); i <= size; ++i) {
-			wchar_t ch = message[i];
-
-			bool isEol = ch == L'\n' || ch == L'\0';
-
-			if (!isEol) {
-				lineWidth += 1;
-			}
-
-			if (isEol || lineWidth == maxLineWidth) {
-				width = max(width, lineWidth);
-
-				lineWidth = 0;
-				height += 1;
-
-				size_t np = isEol ? i - 1 : i;
-				breaks.emplace_back(p, np);
-				p = i + 1;
-			}
-		}
-
-		int tx = max((COLS - width) / 2, 1),
-			ty = max((LINES - height) / 2, 1);
-
-		int sx = tx - 1,
-			sy = ty - 1,
-			ex = tx + width,
-			ey = ty + height;
-
-
-		{
-			int y = ty;
-			for (const auto& entry : breaks) {
-				int l = entry.second - entry.first + 1;
-
-				mvaddnwstr(y, tx, message.c_str() + entry.first, l);
-
-				for (l += tx; l < ex; ++l) {
-					addch(' ');
-				}
-			}
-		}
-
-		
-		mvaddch(sy, sx, ACS_ULCORNER);
-		mvaddch(sy, ex, ACS_URCORNER);
-		mvaddch(ey, sx, ACS_LLCORNER);
-		mvaddch(ey, ex, ACS_LRCORNER);
-
-		for (int x = tx; x < ex; ++x) {
-			mvaddch(sy, x, ACS_HLINE);
-			mvaddch(ey, x, ACS_HLINE);
-		}
-
-		for (int y = ty; y < ey; ++y) {
-			mvaddch(y, sx, ACS_VLINE);
-			mvaddch(y, ex, ACS_VLINE);
-		}
-
-		return {sx, sy, ex, ey};
-	}
 
 
 	void draw(vector<ImageEntry>& images, const vector<File>& files, size_t index) {
@@ -105,7 +32,6 @@ namespace ncv {
 
 			// Провести ресайзинг и квантизацию если размеры окна изменились
 			image.process(screenWidthPixels(), screenHeightPixels(), COLORS, background);
-
 			image.initColors(background);
 			image.draw();
 		}
@@ -115,27 +41,17 @@ namespace ncv {
 
 
 	void redraw(ImageEntry& image, int sx, int sy, int ex, int ey) {
+		for (int y = sy; y < ey; ++y) {
+			move(y, sx);
+
+			for (int x = sx; x < ex; ++x) {
+				addch(' ');
+			}
+		}
+
 		if (image.success()) {
 			attrset(0);
-
-			for (int y = sy; y <= ey; ++y) {
-				move(y, sx);
-
-				for (int x = sx; x <= ex; ++x) {
-					addch(' ');
-				}
-			}
-
-			image.draw(sx, sy, ex + 1, ey + 1);
-
-		} else {
-			for (int y = sy; y <= ey; ++y) {
-				move(y, sx);
-
-				for (int x = sx; x <= ex; ++x) {
-					addch(' ');
-				}
-			}
+			image.draw(sx, sy, ex, ey);
 		}
 	}
 
@@ -189,8 +105,18 @@ namespace ncv {
 					needRedraw = true;
 					break;
 				
+				case 'b':
+					redraw(images[index], sx, sy, ex, ey);
+
+					toggleBigCharsMode();
+
+					tie(sx, sy, ex, ey) = realert();
+
+					break;
+				
 				case 'w':
 					redraw(images[index], sx, sy, ex, ey);
+					resetAlerted();
 					
 					if (shown != FILE_INFO) {
 						tie(sx, sy, ex, ey) = alert(
@@ -212,6 +138,7 @@ namespace ncv {
 				
 				case KEY_F(1):
 					redraw(images[index], sx, sy, ex, ey);
+					resetAlerted();
 
 					if (shown != HELP) {
 						tie(sx, sy, ex, ey) = alert(
@@ -219,8 +146,9 @@ namespace ncv {
 							L"<- | A - предыдущее изображение" LN
 							L"W - информация о текущем изображении" LN
 							L"S - добавить/убрать шум" LN
-							L"E - использовать 2.5 символа вместо 2 на пиксель" LN
+							L"E - использовать 2.5 символа вместо 2 на пиксель " LN
 							L"R - перерисовать изображение" LN
+							L"B - включить/выключить большие символы" LN
 							L"Q | Esc - выход"
 						);
 
@@ -251,6 +179,7 @@ namespace ncv {
 			
 			if (lines != LINES || cols != COLS || oldIndex != index || needRedraw) {
 				draw(images, files, index);
+				resetAlerted();
 				lines = LINES;
 				cols = COLS;
 				shown = NONE;
@@ -277,7 +206,6 @@ int main(int argc, const char* args[]) {
 	setlocale(LC_ALL, "");
 
 	srand(time(NULL));
-
 
 	signal(SIGSEGV, onError);
 	signal(SIGABRT, onError);

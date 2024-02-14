@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(NewConsoleViewer VERSION 1.1.1 LANGUAGES CXX)
+project(NewConsoleViewer VERSION 1.2.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -29,7 +29,7 @@ add_compile_options(
 #	-Wconversion
 )
 
-if(NOT CMAKE_BUILD_TYPE MATCHES "Windows")
+if(NOT CMAKE_BUILD_TYPE MATCHES "MinGW")
 	add_compile_options(-Wold-style-cast)
 endif()
 
@@ -50,8 +50,8 @@ elseif(CMAKE_BUILD_TYPE MATCHES "Release")
 	set(CMAKE_C_COMPILER "g++")
 	set(CMAKE_CXX_COMPILER "g++")
 	
-elseif(CMAKE_BUILD_TYPE MATCHES "Windows")
-	message("Windows build")
+elseif(CMAKE_BUILD_TYPE MATCHES "MinGW")
+	message("MinGW build")
 	
 	include_directories(/home/winch/0x590/c++/ncv/PDCurses/ /home/winch/0x590/c++/ncv/PDCurses/wincon/)
 	
@@ -71,15 +71,19 @@ if(NOT CMAKE_CXX_EXTENSIONS)
 endif()
 
 
-if(CMAKE_BUILD_TYPE MATCHES "Windows")
+if(CMAKE_BUILD_TYPE MATCHES "MinGW")
 	add_library(pdcurses STATIC PDCurses/wincon/)
 else()
 	find_library(NCURSESW_LIBRARY ncursesw)
 endif()
 
 
-add_executable(ncv src/main.cpp)
+add_executable(ncv
+		src/main.cpp
+		src/alert.cpp
+		src/ncurses_wrap.cpp
+)
 
-if(NOT CMAKE_BUILD_TYPE MATCHES "Windows")
+if(NOT CMAKE_BUILD_TYPE MATCHES "MinGW")
 	target_link_libraries(ncv ${NCURSESW_LIBRARY})
 endif()
