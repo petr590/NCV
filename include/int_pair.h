@@ -1,5 +1,5 @@
-#ifndef NCV_INT_PAIR_CPP
-#define NCV_INT_PAIR_CPP
+#ifndef NCV_INT_PAIR_H
+#define NCV_INT_PAIR_H
 
 namespace ncv {
 	typedef long long int_pair;
@@ -10,8 +10,8 @@ namespace ncv {
 
 	inline int_pair sortedIntPair(int first, int second) {
 		return first < second ?
-				(static_cast<int_pair>(first) << 24 | second) :
-				(static_cast<int_pair>(second) << 24 | first);
+				intPair(first, second) :
+				intPair(second, first);
 	}
 
 	inline int_pair reverseIntPair(int_pair pair) {
@@ -27,4 +27,4 @@ namespace ncv {
 	}
 }
 
-#endif /* NCV_INT_PAIR_CPP */
+#endif /* NCV_INT_PAIR_H */

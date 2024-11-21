@@ -11,6 +11,10 @@
 #include <string>
 
 namespace ncv {
+
+	/** Устанавливает режим "больших символов" */
+	void setBigCharsMode(bool enabled);
+
 	/** Переключает режим "больших символов" */
 	extern void toggleBigCharsMode();
 

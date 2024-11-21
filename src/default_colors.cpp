@@ -1,7 +1,4 @@
-#ifndef NCV_COLORS_CPP
-#define NCV_COLORS_CPP
-
-#include "rgb.cpp"
+#include "rgb.h"
 #include "ncurses_wrap.h"
 #include <vector>
 
@@ -59,5 +56,3 @@ namespace ncv {
 		}
 	}
 }
-
-#endif /* NCV_COLORS_CPP */

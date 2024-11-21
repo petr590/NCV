@@ -1,6 +1,3 @@
-#ifndef NCV_ALERT_CPP
-#define NCV_ALERT_CPP
-
 #include "alert.h"
 #include "ncurses_wrap.h"
 #include <vector>
@@ -1683,17 +1680,18 @@ namespace ncv::alert_impl {
 }
 
 namespace ncv {
+	using namespace ncv::alert_impl;
+
+	void setBigCharsMode(bool enabled) {
+		bigMode = enabled;
+	}
 
 	void toggleBigCharsMode() {
-		using namespace ncv::alert_impl;
-
 		bigMode = !bigMode;
 	}
 
 
 	std::tuple<int, int, int, int> alert(const std::wstring& message) {
-		using namespace ncv::alert_impl;
-
 		const bool small = !bigMode;
 
 		const int lineHeight = small ? 1 : CHAR_HEIGHT;
@@ -1764,8 +1762,6 @@ namespace ncv {
 
 
 	std::tuple<int, int, int, int> realert() {
-		using namespace ncv::alert_impl;
-
 		if (alerted != nullptr) {
 			return alert(*alerted);
 		}
@@ -1774,11 +1770,7 @@ namespace ncv {
 	}
 
 	void resetAlerted() {
-		using namespace ncv::alert_impl;
-
 		alerted = nullptr;
 		buffer.clear();
 	}
 }
-
-#endif /* NCV_ALERT_CPP */

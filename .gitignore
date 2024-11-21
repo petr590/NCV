@@ -1,14 +1,5 @@
-CMakeCache.txt
-cmake_install.cmake
-Makefile
-CMakeFiles/
-
-bin/
-examples/
-PDCurses/
-windows/
 debug/
 release/
-
-
+examples/
+.vscode
 *.py

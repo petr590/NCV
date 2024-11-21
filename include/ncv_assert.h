@@ -1,5 +1,5 @@
-#ifndef NCV_ASSERT
-#define NCV_ASSERT
+#ifndef NCV_ASSERT_H
+#define NCV_ASSERT_H
 
 #include "ncurses_wrap.h"
 #include <cassert>
@@ -11,7 +11,8 @@
 		(static_cast<bool>(expr) ? void(0) :\
 		__ncv_assert_fail(__FILE__, __LINE__, __PRETTY_FUNCTION__, #expr))
 
-void __ncv_assert_fail(const char* file, unsigned int line, const char* function, const char* assertion) {
+inline void __ncv_assert_fail(const char* file, unsigned int line,
+		const char* function, const char* assertion) {
 
 	if (!isendwin()) {
 		ncurses_end();
@@ -29,7 +30,8 @@ void __ncv_assert_fail(const char* file, unsigned int line, const char* function
 		__ncv_assert_fail_message(__FILE__, __LINE__, __PRETTY_FUNCTION__, __VA_ARGS__))
 
 template<typename... Args>
-void __ncv_assert_fail_message(const char* file, unsigned int line, const char* function, const char* assertion, Args... args) {
+inline void __ncv_assert_fail_message(const char* file, unsigned int line,
+		const char* function, const char* assertion, Args... args) {
 
 	if (!isendwin()) {
 		ncurses_end();
@@ -51,4 +53,4 @@ inline void __nothing(Args...) {}
 
 #endif /* NDEBUG */
 
-#endif /* NCV_ASSERT */
+#endif /* NCV_ASSERT_H */

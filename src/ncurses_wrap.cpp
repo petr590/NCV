@@ -1,6 +1,3 @@
-#ifndef NCV_NCURSES_WRAP_CPP
-#define NCV_NCURSES_WRAP_CPP
-
 #include "ncurses_wrap.h"
 #include <cstdlib>
 
@@ -8,10 +5,12 @@ void ncurses_start() {
 	curs_set(false);
 	noecho();
 	keypad(stdscr, true);
+	timeout(100); // ms
 
 	#ifndef NO_USE_SET_ESCDELAY
 	// Убираем задержку при нажатии Esc
-	set_escdelay(0); // Если этой функции нет в вашей версии ncurses, отключите её с помощью макроса
+	// Если этой функции нет в вашей версии ncurses, отключите её с помощью макроса NO_USE_SET_ESCDELAY
+	set_escdelay(0);
 	#endif
 }
 
@@ -42,8 +41,50 @@ int mvaddnwstr(int y, int x, const wchar_t* wstr, int n) {
 
 
 namespace ncv {
-	bool squeezed = false;
+	using std::min;
+
+	bool doubleResolution = false;
+
+	const float
+			DEFAULT_X_SCALE = 2,
+			DEFAULT_Y_SCALE = 1,
+			DOUBLE_X_SCALE = DEFAULT_X_SCALE / 2,
+			DOUBLE_Y_SCALE = DEFAULT_Y_SCALE / 2;
+
+	float scaleX() {
+		return doubleResolution ? DOUBLE_X_SCALE : DEFAULT_X_SCALE;
+	}
+
+	float scaleY() {
+		return doubleResolution ? DOUBLE_Y_SCALE : DEFAULT_Y_SCALE;
+	}
+
+	int screenWidthPixels() {
+		return static_cast<int>(COLS / scaleX());
+	}
+
+	int screenHeightPixels() {
+		return static_cast<int>(LINES / scaleY());
+	}
+
+	int viewportWidthPixels() {
+		return screenWidthPixels();
+	}
+
+	int viewportHeightPixels() {
+		return static_cast<int>((LINES - 1) / scaleY()); // Резервируем место под строку состояния
+	}
+
+	int_pair fitSize(int scrWidth, int scrHeight, int imgWidth, int imgHeight) {
+		
+		double ratio = min(min(
+			static_cast<double>(scrWidth) / imgWidth,
+			static_cast<double>(scrHeight) / imgHeight
+		), 1.0);
+		
+		return intPair(
+			static_cast<int>(round(imgWidth * ratio)),
+			static_cast<int>(round(imgHeight * ratio))
+		);
+	}
 }
-
-
-#endif /* NCV_NCURSES_WRAP_CPP */
