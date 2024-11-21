@@ -1,37 +1,35 @@
 [![en](https://img.shields.io/badge/lang-en-red.svg)](https://github.com/petr590/NCV/blob/master/README.md)
 [![ru](https://img.shields.io/badge/lang-ru-blue.svg)](https://github.com/petr590/NCV/blob/master/README-ru.md)
 
-# New Console image Viewer
+# New Console image Viewer 2.0
 Это программа для отрисовки изображений в консоли. Работает с ncurses.
 Программе можно передать аргумент - изображение или папку с изображениями.
 
 ## Сборка
-Необходимо установить ncurses (или pdcurses для windows)
+Необходимо установить ncurses, libav, libswscale, sdl2, sdl-mixer
 
 ```console
-foo@bar:~$ git clone https://github.com/petr590/NCV.git
-foo@bar:~$ cd NCV/
-foo@bar:~/NCV$ mkdir release
-foo@bar:~/NCV$ cd release/
-foo@bar:~/NCV/release$ cmake -DCMAKE_BUILD_TYPE=Release ..
-foo@bar:~/NCV/release$ make
+git clone https://github.com/petr590/NCV.git
+cd NCV/
+mkdir release && cd release
+cmake -DCMAKE_BUILD_TYPE=Release ..
+make
 ```
 
-Для сборки в режиме debug замените 'release' на 'debug'
-Опция 'CMAKE_BUILD_TYPE=MinGW' - это сборка вместе с исходниками PDCurses под MinGW.
-Сборка под Windows не была протестирована, для неё отредактируйте файл CMakeLists.txt.
+Для сборки в режиме debug замените '-DCMAKE_BUILD_TYPE=Release' на '-DCMAKE_BUILD_TYPE=Debug'
 
-## Используемые библиотеки
-- **ncursesw** (есть полифилл для ncurses для выведения текста в wchar_t)
-- **stb_image** (не нужно устанавливать, поставляется вместе с программой)
+## Запуск
+```console
+./ncv [-b] [-e] [-p] <file or directory>
+```
 
 ## Управление
-Переключение изображений стрелками либо клавишами <kbd>A</kbd>/<kbd>D</kbd>.  
+Переключение изображений стрелками или клавишами <kbd>A</kbd>/<kbd>D</kbd>.  
 Выход - <kbd>Esc</kbd>, <kbd>Q</kbd> или <kbd>Ctrl+C</kbd>.  
-Если изображение сжато по ширине, включите режим "половинных символов" клавишей <kbd>E</kbd> (каждый пиксель не 2 символа в ширину, а 2.5).  
 Если изображение отрисовывается в углу или с ошибками, перерисуйте его на <kbd>R</kbd>  
-<kbd>W</kbd> - краткая информация.  
-<kbd>S</kbd> - добавить/убрать шум.  
-<kbd>B</kbd> - включить/выключить большие символы (поддерживаются ascii и русские символы).
-Нужно для маленького масштаба терминала, когда текст невозможно прочитать.  
-<kbd>F1</kbd> - справка по управлению.
+
+## Используемые библиотеки
+- **ncursesw** - для вывода цветного текста на экран
+- **libav** - библиотека для чтения изображений, видео и аудио
+- **libswscale** - для ресайзинга видео
+- **SDL2** и **SDL_mixer** - для выода звука (функция в разработке)

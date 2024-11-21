@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.3)
-project(NewConsoleViewer VERSION 1.2.0 LANGUAGES CXX)
+project(NewConsoleViewer VERSION 2.0.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_SOURCE_DIR, src)
 
@@ -74,14 +74,4 @@ endif()
 
 add_executable(ncv ${SOURCES})
 
-
 target_link_libraries(ncv ncursesw avformat avcodec avutil swscale pthread SDL2 SDL_mixer)
-
-
-# find_program(iwyu_path NAMES include-what-you-use iwyu)
-
-# if(NOT iwyu_path)
-# 	message(FATAL_ERROR "Could not find the program include-what-you-use")
-# endif()
-
-# set_property(TARGET ncv PROPERTY CXX_INCLUDE_WHAT_YOU_USE ${iwyu_path})
