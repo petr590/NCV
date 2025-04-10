@@ -1,6 +1,7 @@
 #include "base_reader.cpp"
 #include "frame_group.h"
 #include "interthread.h"
+#include "args.h"
 #include "throw_if_error.h"
 #include <mutex>
 
@@ -13,7 +14,10 @@ namespace ncv {
 	using std::lock_guard;
 
 	/* Во сколько раз количество цветов в группе может превышать количество цветов в кадре */
-	const int EXCESS_RATIO = 8;
+	const int EXCESS_RATIO = 16;
+
+	/* Минимальный размер группы. -1 для снятия ограничения */
+	const int MIN_FRAME_GROUP_SIZE = 30;
 
 	/* Максимальный размер группы. -1 для снятия ограничения */
 	const int MAX_FRAME_GROUP_SIZE = -1;
@@ -90,7 +94,7 @@ namespace ncv {
 			if constexpr (MAX_FRAME_GROUP_SIZE > 0) {
 				if (group.size() >= MAX_FRAME_GROUP_SIZE) {
 					finishGroup();
-					checkSize(pixelMap, frame, avFrame);
+					checkSizeUpdated(pixelMap, frame, avFrame);
 					newGroup(pixelMap);
 				}
 			}
@@ -107,7 +111,9 @@ namespace ncv {
 
 
 			// Если цветов стало слишком много
-			if (groupPixelMap.size() > colors * EXCESS_RATIO) {
+			if (parallel &&
+				group.size() >= MIN_FRAME_GROUP_SIZE &&
+				groupPixelMap.size() > colors * EXCESS_RATIO) {
 				
 				// То вернём статистику как было без нового кадра
 				for (const auto& entry : pixelMap) {
@@ -117,7 +123,7 @@ namespace ncv {
 				}
 				
 				finishGroup();
-				checkSize(pixelMap, frame, avFrame);
+				checkSizeUpdated(pixelMap, frame, avFrame);
 				newGroup(pixelMap);
 			}
 
@@ -138,7 +144,7 @@ namespace ncv {
 			frameGroups.push_back(move(group));
 		}
 
-		void checkSize(map<rgb_t, count_t>& pixelMap, Frame& frame, AVFrame* avFrame) {
+		void checkSizeUpdated(map<rgb_t, count_t>& pixelMap, Frame& frame, AVFrame* avFrame) {
 			if (vptWidth != viewportWidthPixels() ||
 				vptHeight != viewportHeightPixels()) {
 				

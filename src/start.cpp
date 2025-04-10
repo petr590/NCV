@@ -27,7 +27,7 @@ namespace ncv {
 	}
 }
 
-int main(int argc, const char* args[]) {
+int main(int argc, const char* argv[]) {
 	using namespace ncv;
 	using std::vector;
 	using std::tie;
@@ -39,7 +39,7 @@ int main(int argc, const char* args[]) {
 	signal(SIGSEGV, onError);
 	signal(SIGABRT, onError);
 
-	const char* fileOrDir = parseArgs(argc, args);
+	const char* fileOrDir = parseArgs(argc, argv);
 
 
 	initscr();

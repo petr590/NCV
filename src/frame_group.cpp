@@ -331,7 +331,7 @@ namespace ncv {
 				for (const auto& colorAndCoords : colorCoords) {
 					chtype colorPair = COLOR_PAIR(indexTable.at(colorAndCoords.first));
 
-					attron(colorPair);
+					wattron(buffer, colorPair);
 
 					for (const auto& coord : colorAndCoords.second) {
 						wmove(buffer, dy + coord.second, dx + coord.first * 2);
@@ -339,7 +339,7 @@ namespace ncv {
 						waddch(buffer, ' ');
 					}
 
-					attroff(colorPair);
+					wattroff(buffer, colorPair);
 				}
 
 			} else {
