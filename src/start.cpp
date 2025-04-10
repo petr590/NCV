@@ -1,8 +1,8 @@
 #include "main.h"
-#include "arg_parser.h"
+#include "args.h"
 #include "files.h"
+#include "ncurses_wrap.h"
 #include "throw_if_error.h"
-#include "default_colors.cpp"
 #include "reader.h"
 
 extern "C" {
@@ -16,7 +16,6 @@ extern "C" {
 #include "debug.h"
 
 namespace ncv {
-
 	using std::signal;
 
 	void onError(int signum) {
@@ -30,10 +29,12 @@ namespace ncv {
 
 int main(int argc, const char* args[]) {
 	using namespace ncv;
+	using std::vector;
+	using std::tie;
 
 	setlocale(LC_ALL, "");
 
-	srand(time(NULL));
+	srand(time(nullptr));
 
 	signal(SIGSEGV, onError);
 	signal(SIGABRT, onError);
@@ -45,12 +46,11 @@ int main(int argc, const char* args[]) {
 
 	if (!has_colors() || !can_change_color()) {
 		endwin();
-		av_log(NULL, AV_LOG_ERROR, "Your terminal does not support variable colors\r\n");
+		av_log(nullptr, AV_LOG_ERROR, "Your terminal does not support variable colors\r\n");
 		return COLORS_NOT_SUPPORTED_ERROR;
 	}
 
 	start_color();
-	initDefaultColors();
 	ncurses_start();
 
 
@@ -62,7 +62,7 @@ int main(int argc, const char* args[]) {
 
 	if (files.empty()) {
 		endwin();
-		av_log(NULL, AV_LOG_ERROR, "No media files found in directory \"%s\"\r\n", fileOrDir);
+		av_log(nullptr, AV_LOG_ERROR, "No media files found in directory \"%s\"\r\n", fileOrDir);
 		return FILES_NOT_FOUND_ERROR;
 	}
 

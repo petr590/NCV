@@ -2,14 +2,14 @@
 #define NCV_RGB_H
 
 #include <cmath>
-#include <cstdint>
+#include <tuple>
 
 namespace ncv {
 #	if 1
-	typedef int rgb_t;      // Цвет
-	typedef int index_t;    // Индекс цвета
-	typedef int cp_index_t; // Индекс цветовой пары
-	typedef int count_t;    // Количество чего-либо
+	using rgb_t      = int; // Цвет
+	using index_t    = int; // Индекс цвета
+	using cp_index_t = int; // Индекс цветовой пары
+	using count_t    = int; // Количество чего-либо
 #	else
 
 	#define STRUCT(name) struct name {\
@@ -36,6 +36,8 @@ namespace ncv {
 	STRUCT(cp_index_t);
 	STRUCT(count_t);
 #	endif
+
+	using index_pair = std::pair<index_t, index_t>;
 
 	const rgb_t RGB_NONE = -1;
 

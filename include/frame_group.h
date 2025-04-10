@@ -7,9 +7,6 @@
 #include <future>
 
 namespace ncv {
-	typedef int_pair index_pair;
-
-
 	class FrameGroup {
 		std::vector<Frame> frames;
 		Palette palette;
@@ -17,21 +14,22 @@ namespace ncv {
 		// Данные, кешируемые для отрисовки двух пикселеё в одном символе
 
 		/**
-		 * список пар, отсортированный по первому значению в порядке возрастания.
+		 * Список пар, отсортированных по первому значению в порядке возрастания.
 		 * Первое значение - сколько раз эта пара индексов встречается в изображении,
 		 * второе - пара индексов, не равных друг другу.
 		 */
 		std::vector<std::pair<count_t, index_pair>> joins;
 
 		/**
-		 * 
+		 * Ключ - пара индексов цветов.
+		 * Значение - индекс пары ncurses и флаги для данной пары индексов цветов.
 		 */
-		std::map<index_pair, chtype> jointPixels;
+		std::map<index_pair, int32_t> jointIndexTable;
 		
 		AVRational time_base;
 
 	public:
-		FrameGroup(const AVRational& time_base);
+		explicit FrameGroup(const AVRational& time_base);
 
 		FrameGroup(FrameGroup&&);
 
@@ -54,6 +52,8 @@ namespace ncv {
 		void quantize(map<rgb_t, count_t>&& pixelMap, uint32_t colors, bool skipForeground);
 
 	private:
+		void initNcursesColors(const std::vector<rgb_t>& colorTable, bool initPairs) const;
+
 		int getStartX() const;
 		int getStartY() const;
 
@@ -73,6 +73,8 @@ namespace ncv {
 		void draw(const File&, int sx, int sy, int ex, int ey) const;
 
 		void clear();
+
+		static void resetTimestamps();
 	};
 }
 

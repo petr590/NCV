@@ -2,7 +2,7 @@
 #define NCV_ERROR_CODES_H
 
 namespace ncv {
-	static const int
+	const int
 			ARGUMENTS_ERROR = 1,
 			AVFORMAT_ERROR = 2,
 			FILES_NOT_FOUND_ERROR = 3,

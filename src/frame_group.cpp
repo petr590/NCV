@@ -1,7 +1,9 @@
 #include "frame_group.h"
 #include "interthread.h"
 #include "ncv_assert.h"
+#include "pair_utils.h"
 #include "dynamic_bitset.h"
+#include "args.h"
 #include <set>
 #include <chrono>
 #include <thread>
@@ -10,18 +12,23 @@
 #include "debug.h"
 
 namespace ncv {
+	using std::swap;
 	using std::pair;
 	using std::set;
+	using std::mutex;
+	using std::lock_guard;
+
+	static bool skipForeground() {
+		return COLORS > 8;
+	}
 
 	static int maxColors() {
-		return COLORS - 2;
+		return COLORS - (skipForeground() ? 2 : 1);
 	}
 
 	static int maxColorPairs() {
 		return COLOR_PAIRS - 1;
 	}
-
-	static const bool SKIP_FOREGROUND = true;
 
 	FrameGroup::FrameGroup(const AVRational& time_base):
 			time_base(time_base) {
@@ -29,13 +36,13 @@ namespace ncv {
 		ASSERT(time_base.den != 0);
 	}
 	
-	FrameGroup::FrameGroup(FrameGroup&& other) {
-		frames = std::move(other.frames);
-		palette = std::move(other.palette);
-		joins = std::move(other.joins);
-		jointPixels = std::move(other.jointPixels);
-		time_base = std::move(other.time_base);
-
+	FrameGroup::FrameGroup(FrameGroup&& other):
+		frames          (std::move(other.frames)),
+		palette         (std::move(other.palette)),
+		joins           (std::move(other.joins)),
+		jointIndexTable (std::move(other.jointIndexTable)),
+		time_base       (std::move(other.time_base))
+	{
 		ASSERT(time_base.den != 0);
 	}
 
@@ -65,7 +72,7 @@ namespace ncv {
 	}
 
 	void FrameGroup::quantize(map<rgb_t, count_t>&& pixelMap) {
-		quantize(std::move(pixelMap), maxColors(), SKIP_FOREGROUND);
+		quantize(std::move(pixelMap), maxColors(), skipForeground());
 	}
 
 	void FrameGroup::quantize(map<rgb_t, count_t>&& pixelMap, uint32_t colors, bool skipForeground) {
@@ -74,7 +81,7 @@ namespace ncv {
 
 
 	const int
-			JCH_SHIFT = 31,
+			JCH_SHIFT = 16,
 			JCH_SPACE = 0 << JCH_SHIFT,
 			JCH_UPPER = 1 << JCH_SHIFT;
 
@@ -103,128 +110,131 @@ namespace ncv {
 							i2 = indexTable.at(frame.pixel(x, y + 1));
 					
 					if (i1 != i2) {
-						joinsMap[sortedIntPair(i1, i2)] += 1;
+						joinsMap[sorted_pair(i1, i2)] += 1;
 					}
 				}
 			}
 		}
 
 		joins.reserve(joinsMap.size());
-
-		for (const auto& entry : joinsMap) {
-			joins.emplace_back(entry.second, entry.first);
-		}
+		
+		transform(joinsMap.begin(), joinsMap.end(), back_inserter(joins),
+				[] (const auto& p) { return make_pair(p.second, p.first); });
 
 		sort(joins.begin(), joins.end());
 	}
 
 
 	void FrameGroup::initColors() {
-		if (doubleResolution) {
-			const count_t colorsCount = static_cast<count_t>(palette.getColorTable().size());
-
-			set<index_t> colorIndexes;
-
-			for (index_t i = 1; i < colorsCount; ++i)
-				colorIndexes.insert(i);
+		if (!doubleResolution) {
+			lock_guard<mutex> lock(ncursesMutex);
 			
-			count_t space = maxColorPairs() * 2;
-			count_t remains = colorsCount;
-			cp_index_t lastCpIndex = 0;
+			// Инициализируем цвета и пары
+			initNcursesColors(palette.getColorTable(), true);
+			return;
+		}
 
-			map<index_t, chtype> chtypeByIndex; // Конкретный символ по индексу цвета
-			vector<index_pair> uninitialized; // Джойны, которым не хватило места
 
-			// Инициализируем джойны, которые влезают
-			for (const auto& entry : joins) {
-				index_pair pair = entry.second;
+		const count_t colorsCount = static_cast<count_t>(palette.getColorTable().size());
 
-				index_t i1 = firstInt(pair),
-						i2 = secondInt(pair);
-				
-				count_t d = (colorIndexes.find(i1) != colorIndexes.end()) +
-							(colorIndexes.find(i2) != colorIndexes.end());
+		set<index_t> colorIndexes;
+		for (index_t i = 1; i < colorsCount; ++i)
+			colorIndexes.insert(i);
+		
+		count_t space = maxColorPairs() * 2;
+		count_t remains = colorsCount;
+		cp_index_t lastCpIndex = 0;
 
-				if (space - 2 >= remains - d) {
-					space -= 2;
+		// Ключ - индекс цвета, значение - индекс пары ncurses и флаги по индексу цвета
+		map<index_t, int32_t> oneColorIndexTable;
 
-					if (d != 0) {
-						remains -= d;
-						colorIndexes.erase(i1);
-						colorIndexes.erase(i2);
-					}
+		// Джойны, которым не хватило места
+		vector<index_pair> uninitialized;
 
-					lastCpIndex += 1;
+		lock_guard<mutex> lock(ncursesMutex);
 
-					jointPixels[pair]                 = JCH_UPPER | EXT_COLOR_PAIR(lastCpIndex);
-					jointPixels[reverseIntPair(pair)] = JCH_UPPER | EXT_COLOR_PAIR(lastCpIndex) | A_REVERSE;
+		// Инициализируем джойны, которые влезают
+		for (const auto& entry : joins) {
+			index_pair pair = entry.second;
 
-					jointPixels[intPair(i1, i1)] = JCH_SPACE | EXT_COLOR_PAIR(lastCpIndex) | A_REVERSE;
-					jointPixels[intPair(i2, i2)] = JCH_SPACE | EXT_COLOR_PAIR(lastCpIndex);
+			index_t i1 = pair.first,
+					i2 = pair.second;
+			
+			count_t d = (colorIndexes.find(i1) != colorIndexes.end()) +
+						(colorIndexes.find(i2) != colorIndexes.end());
 
-					chtypeByIndex[i1] = JCH_SPACE | EXT_COLOR_PAIR(lastCpIndex) | A_REVERSE;
-					chtypeByIndex[i2] = JCH_SPACE | EXT_COLOR_PAIR(lastCpIndex);
+			if (space - 2 >= remains - d) {
+				space -= 2;
 
-					int ret = init_extended_pair(lastCpIndex, i1, i2); // cp index, fg, bg
-					ASSERT_MESSAGE(ret == OK, "%d %d %d", lastCpIndex, i1, i2);
-
-				} else {
-					uninitialized.push_back(pair);
+				if (d != 0) {
+					remains -= d;
+					colorIndexes.erase(i1);
+					colorIndexes.erase(i2);
 				}
-			}
 
-			
-			// Делаем чётное количество
-			if ((colorIndexes.size() & 0x1) == 1) {
-				colorIndexes.insert(0);
-			}
-
-			// И объединяем по парам оставшиеся цвета
-			for (auto it = colorIndexes.begin(); it != colorIndexes.end(); ) {
-				index_t i1 = *(it++),
-						i2 = *(it++);
-				
 				lastCpIndex += 1;
+
+				jointIndexTable[pair]                = JCH_UPPER | EXT_COLOR_PAIR(lastCpIndex);
+				jointIndexTable[reversed_pair(pair)] = JCH_UPPER | EXT_COLOR_PAIR(lastCpIndex) | A_REVERSE;
+
+				jointIndexTable[index_pair(i1, i1)] = JCH_SPACE | EXT_COLOR_PAIR(lastCpIndex) | A_REVERSE;
+				jointIndexTable[index_pair(i2, i2)] = JCH_SPACE | EXT_COLOR_PAIR(lastCpIndex);
+
+				oneColorIndexTable[i1] = JCH_SPACE | EXT_COLOR_PAIR(lastCpIndex) | A_REVERSE;
+				oneColorIndexTable[i2] = JCH_SPACE | EXT_COLOR_PAIR(lastCpIndex);
 
 				int ret = init_extended_pair(lastCpIndex, i1, i2); // cp index, fg, bg
 				ASSERT_MESSAGE(ret == OK, "%d %d %d", lastCpIndex, i1, i2);
 
-				jointPixels[intPair(i1, i1)] = JCH_SPACE | EXT_COLOR_PAIR(lastCpIndex) | A_REVERSE;
-				jointPixels[intPair(i2, i2)] = JCH_SPACE | EXT_COLOR_PAIR(lastCpIndex);
-
-				chtypeByIndex[i1] = JCH_SPACE | EXT_COLOR_PAIR(lastCpIndex) | A_REVERSE;
-				chtypeByIndex[i2] = JCH_SPACE | EXT_COLOR_PAIR(lastCpIndex);
+			} else {
+				uninitialized.push_back(pair);
 			}
+		}
 
-			// Инициализируем оставшиеся пары
-			for (int_pair pair : uninitialized) {
-				jointPixels[pair]                 = chtypeByIndex.at(firstInt(pair));
-				jointPixels[reverseIntPair(pair)] = chtypeByIndex.at(secondInt(pair));
-			}
+		
+		// Делаем чётное количество
+		if ((colorIndexes.size() & 0x1) == 1) {
+			colorIndexes.insert(0);
+		}
+
+		// И объединяем по парам оставшиеся цвета
+		for (auto it = colorIndexes.begin(); it != colorIndexes.end(); ) {
+			index_t i1 = *(it++),
+					i2 = *(it++);
+			
+			lastCpIndex += 1;
+
+			int ret = init_extended_pair(lastCpIndex, i1, i2); // cp index, fg, bg
+			ASSERT_MESSAGE(ret == OK, "%d %d %d", lastCpIndex, i1, i2);
+
+			jointIndexTable[index_pair(i1, i1)] = JCH_SPACE | EXT_COLOR_PAIR(lastCpIndex) | A_REVERSE;
+			jointIndexTable[index_pair(i2, i2)] = JCH_SPACE | EXT_COLOR_PAIR(lastCpIndex);
+
+			oneColorIndexTable[i1] = JCH_SPACE | EXT_COLOR_PAIR(lastCpIndex) | A_REVERSE;
+			oneColorIndexTable[i2] = JCH_SPACE | EXT_COLOR_PAIR(lastCpIndex);
+		}
+
+		// Инициализируем оставшиеся пары
+		for (index_pair pair : uninitialized) {
+			jointIndexTable[pair]                = oneColorIndexTable.at(pair.first);
+			jointIndexTable[reversed_pair(pair)] = oneColorIndexTable.at(pair.second);
+		}
+
+		// Инициализируем цвета
+		initNcursesColors(palette.getColorTable(), false);
+	}
 
 
-			const vector<rgb_t>& colorTable = palette.getColorTable();
+	void FrameGroup::initNcursesColors(const vector<rgb_t>& colorTable, bool initPairs) const {
+		for (size_t index = 1, size = colorTable.size(); index < size; ++index) {
+			rgb_t color = colorTable.at(index);
 
-			// Инициализируем цвета
-			for (index_t index = 1; index < colorsCount; ++index) {
-				rgb_t color = colorTable[index];
+			int ret1 = init_color(index, getR(color) * 1000 / 255, getG(color) * 1000 / 255, getB(color) * 1000 / 255);
+			ASSERT_MESSAGE(ret1 == OK, "%zu %d", index, color);
 
-				int ret = init_color(index, getR(color) * 1000 / 255, getG(color) * 1000 / 255, getB(color) * 1000 / 255);
-				ASSERT_MESSAGE(ret == OK, "%d %d", index, color);
-			}
-
-		} else {
-			const vector<rgb_t>& colorTable = palette.getColorTable();
-
-			// Инициализируем цвета и пары
-			for (size_t index = 1, size = colorTable.size(); index < size; ++index) {
-				rgb_t color = colorTable[index];
-
-				int ret1 = init_color(index, getR(color) * 1000 / 255, getG(color) * 1000 / 255, getB(color) * 1000 / 255);
+			if (initPairs) {
 				int ret2 = init_pair(index, index, index); // cp index, fg, bg
-
-				ASSERT_MESSAGE(ret1 == OK, "%ld %d", index, color);
-				ASSERT_MESSAGE(ret2 == OK, "%ld", index);
+				ASSERT_MESSAGE(ret2 == OK, "%zu", index);
 			}
 		}
 	}
@@ -246,19 +256,30 @@ namespace ncv {
 	using namespace std::chrono;
 	namespace this_thread = std::this_thread;
 
-	static milliseconds lastTimestamp;
+	static steady_clock::time_point lastTimestamp;
 	static int64_t lastPts = 0;
+
+
+	void FrameGroup::resetTimestamps() {
+		lastTimestamp = {};
+		lastPts = 0;
+	}
 
 
 	void FrameGroup::sleepUntilFrame(const Frame& frame) const {
 		int64_t pts = frame.pts();
+		ASSERT_MESSAGE(pts >= lastPts, "%ld < %ld", pts, lastPts);
 
-		milliseconds waiting((pts - lastPts) * 1000 * time_base.num / time_base.den);
-		milliseconds timestamp(duration_cast<milliseconds>(system_clock::now().time_since_epoch()));
+		auto waiting = nanoseconds(nanoseconds::period::den * (pts - lastPts) * time_base.num / time_base.den);
 
-		this_thread::sleep_for(max(waiting - (timestamp - lastTimestamp), milliseconds(0)));
+		ASSERT_MESSAGE(waiting >= 0ns,
+				"Overflow: %ld * %ld * %d",
+				nanoseconds::period::den, pts - lastPts, time_base.num
+		);
 
-		lastTimestamp = duration_cast<milliseconds>(system_clock::now().time_since_epoch());
+		this_thread::sleep_for(max(waiting - (steady_clock::now() - lastTimestamp), 0ns));
+
+		lastTimestamp = steady_clock::now();
 		lastPts = pts;
 	}
 
@@ -267,32 +288,45 @@ namespace ncv {
 		int dx = getStartX() + static_cast<int>(sx * scaleX()),
 			dy = getStartY() + static_cast<int>(sy * scaleY());
 		
-		const bool db = doubleResolution; // Кэшируем
+		const bool dbRes = doubleResolution; // Кэшируем
 		const map<rgb_t, index_t>& indexTable = palette.getIndexTable();
 
-		const Frame* prev = nullptr;
+		const Frame* prev1 = nullptr;
+		const Frame* prev2 = nullptr;
 
 		for (const Frame& frame : frames) {
 			if (stopped)
 				return;
+			
+			TIMER(t, "total draw");
+			WINDOW* const buffer = drawBuffer1;
 
-
-			if (!db) {
+			if (!dbRes) {
 				map<rgb_t, vector<pair<int, int>>> colorCoords;
 
-				for (int y = sy; y <= ey; ++y) {
-					for (int x = sx; x <= ex; ++x) {
-						rgb_t pix = frame.pixel(x, y);
+				{
+					TIMER(t1, "colorCoords");
 
-						if (prev != nullptr && pix == prev->pixel(x, y)) {
-							continue;
+					for (int y = sy; y <= ey; ++y) {
+						for (int x = sx; x <= ex; ++x) {
+							rgb_t pix = frame.pixel(x, y);
+
+							if (prev2 != nullptr && pix == prev2->pixel(x, y)) {
+								continue;
+							}
+
+							colorCoords[pix].emplace_back(x, y);
 						}
-
-						colorCoords[pix].emplace_back(x, y);
 					}
 				}
 
 				sleepUntilFrame(frame);
+
+				// timer t2("ncursesMutex.lock()");
+				// ncursesMutex.lock();
+				// t2.finish();
+
+				TIMER(t3, "ncurses draw");
 
 				for (const auto& colorAndCoords : colorCoords) {
 					chtype colorPair = COLOR_PAIR(indexTable.at(colorAndCoords.first));
@@ -300,9 +334,9 @@ namespace ncv {
 					attron(colorPair);
 
 					for (const auto& coord : colorAndCoords.second) {
-						move(dy + coord.second, dx + coord.first * 2);
-						addch(' ');
-						addch(' ');
+						wmove(buffer, dy + coord.second, dx + coord.first * 2);
+						waddch(buffer, ' ');
+						waddch(buffer, ' ');
 					}
 
 					attroff(colorPair);
@@ -314,41 +348,54 @@ namespace ncv {
 
 				sleepUntilFrame(frame);
 
+				// timer t1("ncursesMutex.lock()");
+				// ncursesMutex.lock();
+				// t1.finish();
+
+				TIMER(t2, "ncurses draw");
+
 				for (int y = sy; y <= ey-1; y += 2) {
 					for (int x = sx; x <= ex; x += 1) {
 						rgb_t pix1 = frame.pixel(x, y),
 							  pix2 = (y + 1 >= ey) ? RGB_NONE : frame.pixel(x, y + 1);
 
-						if (prev != nullptr &&
-							pix1 == prev->pixel(x, y) &&
-							(pix2 == RGB_NONE || pix2 == prev->pixel(x, y + 1))) {
+						if (prev2 != nullptr &&
+							pix1 == prev2->pixel(x, y) &&
+							(pix2 == RGB_NONE || pix2 == prev2->pixel(x, y + 1))) {
 							continue;
 						}
 
 						index_t i1 = indexTable.at(pix1),
 								i2 = pix2 == RGB_NONE ? i1 : indexTable.at(pix2);
 
-						move(dy + y / 2, dx + x);
+						wmove(buffer, dy + y / 2, dx + x);
 
-						chtype hc = jointPixels.at(intPair(i1, i2));
+						int32_t jch = jointIndexTable.at(index_pair(i1, i2));
 
-						cchar_t* cchar = (hc & JCH_UPPER) != 0 ? &upper : &space;
+						cchar_t* cchar = (jch & JCH_UPPER) != 0 ? &upper : &space;
 
-						cchar->ext_color = hc & EXT_COLOR_MASK;
-						cchar->attr = hc & A_REVERSE;
+						cchar->ext_color = jch & EXT_COLOR_MASK;
+						cchar->attr = jch & A_REVERSE;
 
-						add_wch(cchar);
+						wadd_wch(buffer, cchar);
 					}
 				}
 			}
 
-			prev = &frame;
+			prev2 = prev1;
+			prev1 = &frame;
 
-			mvprintw(LINES - 1, 0,
+			wmove(buffer, LINES - 1, 0);
+			wprintw(buffer,
 					"%ls, %.2f %s",
 					file.wpath().c_str(), file.normalizedSize(), file.sizeUnit()
 			);
-			refresh();
+
+			lock_guard<mutex> lock(ncursesMutex);
+			swap(drawBuffer1, drawBuffer2);
+			updateStdscr = true;
+
+			// ncursesMutex.unlock();
 		}
 	}
 

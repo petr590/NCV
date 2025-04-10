@@ -8,8 +8,6 @@ namespace ncv {
 	using std::vector;
 	using std::pair;
 
-	static const vector<const char*> units = {"B", "KB", "MB", "GB", "TB"};
-
 	File::File(const fs::path& path):
 			fPath(path), fSize(fs::file_size(path)) {
 		
@@ -20,6 +18,8 @@ namespace ncv {
 		fWpath = wstring(str.size(), L' ');
 		fWpath.resize(std::mbstowcs(&fWpath[0], str.c_str(), str.size()));
 
+
+		static const vector<const char*> units = {"B", "KB", "MB", "GB", "TB"};
 
 		float value = this->size();
 		size_t i = 0;
@@ -79,7 +79,9 @@ namespace ncv {
 
 		static const vector<string> extensions = {
 			".png", ".jpg", ".jpeg", ".gif", ".bmp", ".psd", ".pic", ".pnm", ".raw", ".tiff",
-			".3g2", ".3gp", ".asf", ".avi", ".cine", ".dash", ".dv", ".f4v", ".flic", ".flv", ".gxf", ".h261", ".h263", ".h264", ".hevc", ".ifv", ".ipod", ".ismv", ".ivf", ".m4a", ".m4v", ".mj2", ".mjpeg", ".mov", ".mp4", ".mpeg", ".mtv", ".mxf", ".nuv", ".ogv", ".r3d", ".rm", ".sol", ".swf", ".vc1", ".vivo", ".vob", ".webm", ".wtv", ".wve"
+			".3g2", ".3gp", ".asf", ".avi", ".cine", ".dash", ".dv", ".f4v", ".flic", ".flv",
+			".gxf", ".h261", ".h263", ".h264", ".hevc", ".ifv", ".ipod", ".ismv", ".ivf", ".m4a",
+			".m4v", ".mj2", ".mjpeg", ".mov", ".mp4", ".mpeg", ".mtv", ".mxf", ".nuv", ".ogv",".r3d", ".rm", ".sol", ".swf", ".vc1", ".vivo", ".vob", ".webm", ".wtv", ".wve"
 		};
 
 

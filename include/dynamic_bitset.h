@@ -9,16 +9,16 @@ namespace ncv {
 	using std::vector;
 
 	class dynamic_bitset {
-		typedef uint64_t entry;
+		using entry = uint64_t;
 		static constexpr size_t SIZE = sizeof(entry) * 8;
 
 		vector<entry> data;
 		size_t len;
 
 	public:
-		dynamic_bitset() = default;
+		explicit dynamic_bitset();
 
-		dynamic_bitset(size_t size);
+		explicit dynamic_bitset(size_t size);
 		
 		inline size_t size() const {
 			return len;

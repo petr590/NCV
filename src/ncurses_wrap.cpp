@@ -1,11 +1,12 @@
 #include "ncurses_wrap.h"
+#include "args.h"
 #include <cstdlib>
 
 void ncurses_start() {
 	curs_set(false);
 	noecho();
 	keypad(stdscr, true);
-	timeout(100); // ms
+	timeout(0);
 
 	#ifndef NO_USE_SET_ESCDELAY
 	// Убираем задержку при нажатии Esc
@@ -31,7 +32,7 @@ int mvaddnwstr(int y, int x, const wchar_t* wstr, int n) {
 	char* str = new char[n * sizeof(wchar_t) + 1];
 	int l = wcstombs(str, wstr, n);
 	int res = mvaddnstr(y, x, str, l);
-	delete str;
+	delete[] str;
 	return res;
 }
 
@@ -42,8 +43,6 @@ int mvaddnwstr(int y, int x, const wchar_t* wstr, int n) {
 
 namespace ncv {
 	using std::min;
-
-	bool doubleResolution = false;
 
 	const float
 			DEFAULT_X_SCALE = 2,
@@ -75,16 +74,16 @@ namespace ncv {
 		return static_cast<int>((LINES - 1) / scaleY()); // Резервируем место под строку состояния
 	}
 
-	int_pair fitSize(int scrWidth, int scrHeight, int imgWidth, int imgHeight) {
+	std::pair<int, int> fitSize(int scrWidth, int scrHeight, int imgWidth, int imgHeight) {
 		
 		double ratio = min(min(
 			static_cast<double>(scrWidth) / imgWidth,
 			static_cast<double>(scrHeight) / imgHeight
 		), 1.0);
 		
-		return intPair(
+		return {
 			static_cast<int>(round(imgWidth * ratio)),
 			static_cast<int>(round(imgHeight * ratio))
-		);
+		};
 	}
 }

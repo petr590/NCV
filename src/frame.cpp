@@ -27,21 +27,21 @@ namespace ncv {
 	}
 
 	Frame::~Frame() {
-		if (avFrame != NULL) {
+		if (avFrame != nullptr) {
 			av_frame_free(&avFrame);
-			avFrame = NULL;
+			avFrame = nullptr;
 		}
 	}
 
 	Frame::Frame(Frame&& other) {
 		avFrame = other.avFrame;
-		other.avFrame = NULL;
+		other.avFrame = nullptr;
 	}
 	
 	Frame& Frame::operator=(Frame&& other) {
 		this->~Frame();
 		avFrame = other.avFrame;
-		other.avFrame = NULL;
+		other.avFrame = nullptr;
 		return *this;
 	}
 
@@ -52,7 +52,7 @@ namespace ncv {
 
 	
 	rgb_t Frame::pixel(int x, int y) const {
-		uint8_t* data = avFrame->data[0];
+		const uint8_t* data = avFrame->data[0];
 
 		int i = (x * BPP + y * avFrame->linesize[0]);
 

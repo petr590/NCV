@@ -13,7 +13,7 @@ namespace ncv {
 	template<typename... Args>
 	inline void exitIfError(int result, const char* message, Args... args) {
 		if (result != 0) {
-			av_log(NULL, AV_LOG_ERROR, message, args...);
+			av_log(nullptr, AV_LOG_ERROR, message, args...);
 			exit(AVFORMAT_ERROR);
 		}
 	}
@@ -80,7 +80,7 @@ namespace ncv {
 
 	template<typename T>
 	inline T* __throwIfNull(T* result, const char* file, int line, const char* func) {
-		if (result != NULL)
+		if (result != nullptr)
 			return result;
 
 		return __throwNullPtr<T>(file, line, func);

@@ -1,17 +1,27 @@
 #include "alert.h"
+#include "args.h"
 #include "ncurses_wrap.h"
 #include <vector>
 #include <cstring>
-#include <exception>
+#include <stdexcept>
 
-namespace ncv::alert_impl {
+namespace ncv {
+	using std::size;
+	using std::max;
+	using std::to_string;
+	using std::string;
+	using std::wstring;
+	using std::vector;
+	using std::tuple;
+	using std::pair;
+	using std::logic_error;
 
 	const int CHAR_HEIGHT = 7;
 
-	typedef const wchar_t* const big_char[CHAR_HEIGHT];
-	typedef big_char& big_char_ref;
 
-	big_char UNKNOWN_CHAR = {
+	using big_char = const wchar_t*[CHAR_HEIGHT];
+
+	const big_char UNKNOWN_CHAR = {
 		L"█▀▀▀▀▀▀█",
 		L"█ ▄▀▀▄ █",
 		L"█   ▄▀ █",
@@ -21,7 +31,7 @@ namespace ncv::alert_impl {
 		L"        ",
 	};
 
-	big_char EMPTY_CHAR = {
+	const big_char EMPTY_CHAR = {
 		L"",
 		L"",
 		L"",
@@ -32,7 +42,9 @@ namespace ncv::alert_impl {
 	};
 
 
-	big_char BIG_ASCII[] = {
+	const wchar_t BIG_ASCII_START = L' ';
+
+	const big_char BIG_ASCII[] = {
 		{
 			L"      ",
 			L"      ",
@@ -890,10 +902,10 @@ namespace ncv::alert_impl {
 		},
 	};
 
-	const wchar_t BIG_ASCII_START = L' ';
 
+	const wchar_t BIG_RUS_START = L'А';
 
-	big_char BIG_RUS[] = {
+	const big_char BIG_RUS[] = {
 		{
 			L" █████ ",
 			L"██   ██",
@@ -1472,10 +1484,8 @@ namespace ncv::alert_impl {
 			},
 	};
 
-	const wchar_t BIG_RUS_START = L'А';
 
-
-	big_char RUS_YO_UPPER = {
+	const big_char RUS_YO_UPPER = {
 		L" ▀  ▀ ",
 		L"██████",
 		L"██▄▄▄ ",
@@ -1485,7 +1495,7 @@ namespace ncv::alert_impl {
 		L"      ",
 	};
 
-	big_char RUS_YO_LOWER = {
+	const big_char RUS_YO_LOWER = {
 		L"  ▄  ▄ ",
 		L" ▄▄▄▄▄ ",
 		L"██   ██",
@@ -1495,11 +1505,6 @@ namespace ncv::alert_impl {
 		L"       ",
 	};
 
-	using std::size;
-	using std::string;
-	using std::to_string;
-	using std::logic_error;
-
 
 	const wchar_t GAP[] = L"  ";
 	const int GAP_WIDTH = size(GAP) - 1;
@@ -1508,17 +1513,18 @@ namespace ncv::alert_impl {
 			  PADDING_Y = 2;
 
 
+
 	#ifndef NDEBUG
-	static inline string getErrorMessage(int i, int j, const char* description) {
+	static string getErrorMessage(int i, int j, const char* description) {
 		return i == -1 ?
 				"Line #" + to_string(j) + ' ' + description :
 				"Line #" + to_string(i) + " #" + to_string(j) + ' ' + description;
 	}
 
-	static inline bool checkBigChar(big_char_ref chr, int i = -1) {
+	static bool checkBigChar(const big_char& chr, int i = -1) {
 		size_t len = -1;
 
-		for (size_t j = 0; j < CHAR_HEIGHT; ++j) {
+		for (int j = 0; j < CHAR_HEIGHT; ++j) {
 			const wchar_t* line = chr[j];
 
 			if (line == nullptr) {
@@ -1537,16 +1543,16 @@ namespace ncv::alert_impl {
 		return true;
 	}
 
-	template<size_t N>
-	static inline bool checkBigCharArray(big_char(& arr)[N]) {
-		for (size_t i = 0; i < N; ++i) {
+	template<int N>
+	static bool checkBigCharArray(const big_char(& arr)[N]) {
+		for (int i = 0; i < N; ++i) {
 			checkBigChar(arr[i], i);
 		}
 
 		return true;
 	}
 
-	static bool checked =
+	static const bool checked =
 			checkBigChar(UNKNOWN_CHAR) &&
 			checkBigChar(EMPTY_CHAR) &&
 			checkBigCharArray(BIG_ASCII) &&
@@ -1557,14 +1563,7 @@ namespace ncv::alert_impl {
 	#endif /* not NDEBUG */
 
 
-	using std::vector;
-	using std::tuple;
-	using std::pair;
-	using std::wstring;
-	using std::max;
-
-
-	big_char_ref getBigChar(wchar_t ch) {
+	static const big_char& getBigChar(wchar_t ch) {
 		switch (ch) {
 			case '\0': case '\n':
 				return EMPTY_CHAR;
@@ -1588,12 +1587,12 @@ namespace ncv::alert_impl {
 		}
 	}
 
-	int bigCharWidth(big_char chr) {
-		return wcslen(chr[0]) + GAP_WIDTH;
+	static int bigCharWidth(const big_char& chr) {
+		return static_cast<int>(wcslen(chr[0])) + GAP_WIDTH;
 	}
 
 
-	void drawBorder(int sx, int sy, int ex, int ey) {
+	static void drawBorder(int sx, int sy, int ex, int ey) {
 		mvaddch(sy, sx, ACS_ULCORNER);
 		mvaddch(sy, ex, ACS_URCORNER);
 		mvaddch(ey, sx, ACS_LLCORNER);
@@ -1611,7 +1610,7 @@ namespace ncv::alert_impl {
 	}
 
 
-	void drawPadding(int sx, int sy, int ex, int ey) {
+	static void drawPadding(int sx, int sy, int ex, int ey) {
 		for (int i = 0; i < PADDING_Y; ++i) {
 			move(sy + i, sx);
 
@@ -1627,7 +1626,7 @@ namespace ncv::alert_impl {
 		}
 	}
 
-	void drawText(const wstring& message, const vector<pair<int, int>>& breaks,
+	static void drawText(const wstring& message, const vector<pair<int, int>>& breaks,
 			bool small, int lineHeight, int tx, int ty, int ex) {
 		
 		int y = ty;
@@ -1649,7 +1648,7 @@ namespace ncv::alert_impl {
 				int x = tx;
 
 				for (; wstr < end; wstr++) {
-					big_char_ref chr = getBigChar(*wstr);
+					const big_char& chr = getBigChar(*wstr);
 					int chrWidth = bigCharWidth(chr);
 
 					for (int i = 0; i < CHAR_HEIGHT; ++i) {
@@ -1673,26 +1672,12 @@ namespace ncv::alert_impl {
 		}
 	}
 
-	bool bigMode = false;
 
-	wstring buffer;
-	const wstring* alerted = nullptr;
-}
-
-namespace ncv {
-	using namespace ncv::alert_impl;
-
-	void setBigCharsMode(bool enabled) {
-		bigMode = enabled;
-	}
-
-	void toggleBigCharsMode() {
-		bigMode = !bigMode;
-	}
-
+	static wstring buffer;
+	static const wstring* alerted = nullptr;
 
 	std::tuple<int, int, int, int> alert(const std::wstring& message) {
-		const bool small = !bigMode;
+		const bool small = !bigCharsMode;
 
 		const int lineHeight = small ? 1 : CHAR_HEIGHT;
 

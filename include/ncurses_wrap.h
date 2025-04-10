@@ -1,18 +1,18 @@
 #ifndef NCV_NCURSES_WRAP_H
 #define NCV_NCURSES_WRAP_H
 
-#include "int_pair.h"
 #include <ncurses.h>
 #include <cmath>
+#include <tuple>
 
-extern void ncurses_start();
+void ncurses_start();
 
-extern void ncurses_end();
+void ncurses_end();
 
 
 #ifndef mvaddnwstr // Если ncurses не работает с wchar_t
 
-extern int mvaddnwstr(int y, int x, const wchar_t* wstr, int n);
+int mvaddnwstr(int y, int x, const wchar_t* wstr, int n);
 
 #define mvaddnwstr mvaddnwstr
 #define NEED_MVADDNWSTR_IMPL
@@ -24,8 +24,6 @@ extern int mvaddnwstr(int y, int x, const wchar_t* wstr, int n);
 
 
 namespace ncv {
-	extern bool doubleResolution;
-
 	float scaleX();
 	float scaleY();
 
@@ -35,7 +33,7 @@ namespace ncv {
 	int viewportWidthPixels();
 	int viewportHeightPixels();
 
-	int_pair fitSize(int scrWidth, int scrHeight, int imgWidth, int imgHeight);
+	std::pair<int, int> fitSize(int scrWidth, int scrHeight, int imgWidth, int imgHeight);
 }
 
 

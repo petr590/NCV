@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.3)
-project(NewConsoleViewer VERSION 2.0.0 LANGUAGES CXX)
+project(NewConsoleViewer VERSION 2.1.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_SOURCE_DIR, src)
+set(CMAKE_CXX_STANDARD_REQUIRED true)
+set(CMAKE_SOURCE_DIR src)
 
 include_directories(include)
 
@@ -12,19 +13,24 @@ add_compile_options(
 
 	-Wcast-align
 	-Wcast-qual
+	-Wold-style-cast
 	-Wenum-compare
+#	-Wfloat-equal
+#	-Wconversion
+#	-Wsign-conversion
 
 	-Wctor-dtor-privacy
 	-Wnon-virtual-dtor
 	-Woverloaded-virtual
-	-Wredundant-decls
-	-Wsign-promo
 	
 	-Wduplicated-branches
 	-Wduplicated-cond
+	-Wextra-semi
+	-Wlogical-op
+	-Wredundant-decls
 	-Wshadow=compatible-local
+	-Wsign-promo
 	-Wzero-as-null-pointer-constant
-#	-Wconversion
 )
 
 if(CMAKE_BUILD_TYPE MATCHES "Debug")
@@ -52,7 +58,7 @@ endif()
 set(SOURCES
 	src/palette.cpp
 	src/files.cpp
-	src/arg_parser.cpp
+	src/args.cpp
 	src/alert.cpp
 	src/ncurses_wrap.cpp
 	src/dynamic_bitset.cpp
@@ -61,6 +67,7 @@ set(SOURCES
 	src/frame_group.cpp
 	src/reader.cpp
 	src/drawer.cpp
+	src/double_buffer.cpp
 	src/interthread.cpp
 	
 	src/start.cpp
@@ -74,4 +81,7 @@ endif()
 
 add_executable(ncv ${SOURCES})
 
-target_link_libraries(ncv ncursesw avformat avcodec avutil swscale pthread SDL2 SDL_mixer)
+target_link_libraries(ncv
+	ncursesw avformat avcodec avutil swscale pthread
+	#SDL2 SDL_mixer
+)

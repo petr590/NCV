@@ -13,10 +13,10 @@ namespace ncv {
 	using std::lock_guard;
 
 	/* Во сколько раз количество цветов в группе может превышать количество цветов в кадре */
-	static const int EXCESS_RATIO = 8;
+	const int EXCESS_RATIO = 8;
 
 	/* Максимальный размер группы. -1 для снятия ограничения */
-	static const int MAX_FRAME_GROUP_SIZE = -1;
+	const int MAX_FRAME_GROUP_SIZE = -1;
 
 
 	static AVPixelFormat undeprecatePixFormat(AVPixelFormat format) {
@@ -30,7 +30,7 @@ namespace ncv {
 	}
 
 
-	class VideoReader: public Reader {
+	class VideoReader: public BaseReader {
 		FrameGroup group;
 		
 		SwsContext* swsContext;
@@ -42,20 +42,20 @@ namespace ncv {
 		map<rgb_t, count_t> groupPixelMap;
 
 	public:
-		VideoReader(AVStream* stream):
-				Reader(stream),
+		explicit VideoReader(AVStream* stream):
+				BaseReader(stream),
 				group(stream->time_base) {
 
 			updateSizeAndSws();
 		}
 
-		~VideoReader() {
+		~VideoReader() override {
 			if (group.size() > 0) {
 				finishGroup();
 			}
 
 			sws_freeContext(swsContext);
-			swsContext = NULL;
+			swsContext = nullptr;
 		}
 		
 		
@@ -65,22 +65,18 @@ namespace ncv {
 			vptWidth = viewportWidthPixels();
 			vptHeight = viewportHeightPixels();
 
-			int_pair newSize = fitSize(vptWidth, vptHeight, parameters->width, parameters->height);
-
-			newWidth = firstInt(newSize);
-			newHeight = secondInt(newSize);
-
+			std::tie(newWidth, newHeight) = fitSize(vptWidth, vptHeight, parameters->width, parameters->height);
 
 			swsContext = throwIfNull(sws_getContext(
 				parameters->width, parameters->height,
 				undeprecatePixFormat(static_cast<AVPixelFormat>(parameters->format)),
 				newWidth, newHeight, AV_PIX_FMT_RGB24,
-				SWS_BICUBIC, NULL, NULL, NULL
+				SWS_BICUBIC, nullptr, nullptr, nullptr
 			));
 		}
 		
 
-		virtual void process(const AVPacket*, AVFrame* avFrame) override {
+		virtual void process(AVFrame* avFrame) override {
 			if (stopped) {
 				group.clear();
 				return;
@@ -100,7 +96,7 @@ namespace ncv {
 			}
 			
 			// Добавляем пиксели в статистику группы фреймов
-			for (auto& entry : pixelMap) {
+			for (const auto& entry : pixelMap) {
 				groupPixelMap[entry.first] += entry.second;
 			}
 
@@ -114,7 +110,7 @@ namespace ncv {
 			if (groupPixelMap.size() > colors * EXCESS_RATIO) {
 				
 				// То вернём статистику как было без нового кадра
-				for (auto& entry : pixelMap) {
+				for (const auto& entry : pixelMap) {
 					if ((groupPixelMap[entry.first] -= entry.second) == 0) {
 						groupPixelMap.erase(entry.first);
 					}
@@ -147,7 +143,7 @@ namespace ncv {
 				vptHeight != viewportHeightPixels()) {
 				
 				sws_freeContext(swsContext);
-				swsContext = NULL;
+				swsContext = nullptr;
 				updateSizeAndSws();
 				
 				// Обновляем фрейм и пиксельмапу, так как поменялся размер

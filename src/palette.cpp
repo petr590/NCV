@@ -18,7 +18,7 @@ namespace ncv {
 		index_t value = BACKGROUND_INDEX + 1;
 
 	public:
-		index_generator(bool skipForeground):
+		explicit index_generator(bool skipForeground):
 				skipForeground(skipForeground) {}
 		
 		inline bool skips() const {
@@ -63,7 +63,6 @@ namespace ncv {
 		}
 		
 		rgb_t avg() const {
-			auto c = this->c;
 			return c == 0 ? -1 : getColor(
 				static_cast<int>(r / c),
 				static_cast<int>(g / c),
@@ -330,12 +329,14 @@ namespace ncv {
 					}
 				}
 
-				ASSERT_MESSAGE(filled <= colors, "filled: %d, colors: %d, pairs: %ld of %d", filled, colors, pairs.size(), cntR * cntG * cntB);
+				ASSERT_MESSAGE(filled <= colors,
+						"filled: %u, colors: %u, pairs: %zu of %zu",
+						filled, colors, pairs.size(), static_cast<size_t>(cntR) * cntG * cntB);
 			}
 		}
 
 		
-		static inline float divSafe(float x, float d) {
+		static float divSafe(float x, float d) {
 			return d == 0 ? 0 : x / d;
 		}
 
@@ -384,7 +385,7 @@ namespace ncv {
 			}
 
 			ASSERT_MESSAGE(static_cast<size_t>(i) == colorTableSize,
-					"%ld != %ld", static_cast<size_t>(i), colorTableSize);
+					"%zu != %zu", static_cast<size_t>(i), colorTableSize);
 			
 			indexTable = move(pixelMap);
 			isQuantized = false;

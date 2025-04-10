@@ -8,19 +8,19 @@
 // }
 
 namespace ncv {
-	class AudioReader: public Reader {
+	class AudioReader: public BaseReader {
 	public:
-		AudioReader(AVStream* stream):
-				Reader(stream) {}
+		explicit AudioReader(AVStream* stream):
+				BaseReader(stream) {}
 		
-		virtual void process(const AVPacket*, AVFrame*) override {}
+		virtual void process(AVFrame*) override {}
 	};
 
-	// static const int SDL_AUDIO_BUFFER_SIZE = 1024;
-	// static const int MAX_AUDIO_FRAME_SIZE = 192000;
+	// const int SDL_AUDIO_BUFFER_SIZE = 1024;
+	// const int MAX_AUDIO_FRAME_SIZE = 192000;
 
 
-	// class AudioReader: public Reader {
+	// class AudioReader: public BaseReader {
 	// 	class PacketQueue {
 	// 		deque<AVPacket*> packets;
 	// 		int size = 0;
@@ -66,7 +66,7 @@ namespace ncv {
 				
 	// 			SDL_UnlockMutex(mutex);
 
-	// 			return NULL;
+	// 			return nullptr;
 	// 		}
 	// 	};
 
@@ -77,7 +77,7 @@ namespace ncv {
 
 	// public:
 	// 	AudioReader(AVStream* stream):
-	// 			Reader(stream),
+	// 			BaseReader(stream),
 	// 			wantedSpec {
 	// 				.freq = codecContext->sample_rate,
 	// 				.format = AUDIO_S16SYS,
@@ -132,7 +132,7 @@ namespace ncv {
 	// 	int audio_decode_frame(AVCodecContext *codecContext, uint8_t* buffer, int buf_size) {
 
 	// 		AVPacket pkt;
-	// 		uint8_t* audio_pkt_data = NULL;
+	// 		uint8_t* audio_pkt_data = nullptr;
 	// 		int audio_pkt_size = 0;
 	// 		AVFrame frame;
 
@@ -155,7 +155,7 @@ namespace ncv {
 
 	// 				if (got_frame) {
 	// 					data_size = av_samples_get_buffer_size(
-	// 						NULL, codecContext->channels, frame.nb_samples,
+	// 						nullptr, codecContext->channels, frame.nb_samples,
 	// 						codecContext->sample_fmt, 1
 	// 					);
 
@@ -173,7 +173,7 @@ namespace ncv {
 	// 				return data_size;
 	// 			}
 
-	// 			if (pkt.data != NULL) {
+	// 			if (pkt.data != nullptr) {
 	// 				av_packet_unref(&pkt);
 	// 			}
 
@@ -181,7 +181,7 @@ namespace ncv {
 	// 				return -1;
 	// 			}
 
-	// 			if (packetQueue.pop(true) == NULL) {
+	// 			if (packetQueue.pop(true) == nullptr) {
 	// 				return -1;
 	// 			}
 

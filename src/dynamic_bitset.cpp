@@ -2,6 +2,9 @@
 #include "ncv_assert.h"
 
 namespace ncv {
+	dynamic_bitset::dynamic_bitset():
+			dynamic_bitset(0) {}
+
 	dynamic_bitset::dynamic_bitset(size_t size):
 			data((size + SIZE - 1) / SIZE),
 			len(size) {}
@@ -66,9 +69,9 @@ namespace ncv {
 		for (size_t i = 0, l = data.size(); i < l; ) {
 			entry e = data[i];
 
-			int s = ++i == l ? (bitset.len - 1) % SIZE + 1 : SIZE;
+			size_t s = (++i == l) ? (bitset.len - 1) % SIZE + 1 : SIZE;
 
-			for (int j = 0; j < s; ++j) {
+			for (size_t j = 0; j < s; ++j) {
 				out << static_cast<char>('0' + (e & 0x1));
 				e >>= 1;
 			}

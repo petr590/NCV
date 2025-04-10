@@ -17,7 +17,7 @@ namespace ncv {
 		const char* fSizeUnit;
 
 	public:
-		File(const fs::path& path);
+		explicit File(const fs::path& path);
 		
 		const fs::path& path() const;
 

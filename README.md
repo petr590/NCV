@@ -23,6 +23,11 @@ To build in debug mode, replace '-DCMAKE_BUILD_TYPE=Release' with '-DCMAKE_BUILD
 ./ncv [-b] [-e] [-p] <file or directory>
 ```
 
+## Flags
+- -b, --big-chars:  use big chars (for small console scale)
+- -e, --extended:   use double resolution (may be slower, especially for video)
+- -p, --parallel:   play video parallel to decoding (may cause lags)
+
 ## Management
 Switch images using the arrows or keys <kbd>A</kbd>/<kbd>D</kbd>.  
 Exit: <kbd>Esc</kbd>, <kbd>Q</kbd> or <kbd>Ctrl+C</kbd>.  

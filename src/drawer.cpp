@@ -2,12 +2,14 @@
 #include "frame_group.h"
 #include "interthread.h"
 #include "alert.h"
+#include "args.h"
 #include <functional>
 
 #include "debug.h"
 
 namespace ncv {
 	namespace this_thread = std::this_thread;
+	using namespace std::chrono_literals;
 	using std::vector;
 	using std::mutex;
 	using std::lock_guard;
@@ -15,29 +17,24 @@ namespace ncv {
 	using std::future_status;
 	using std::function;
 
-	static const std::chrono::milliseconds ZERO(0);
-
-	bool parallel = false;
-
 	int frameGroupsProcessPercent = 0;
 
-	void drawFrameGroup(FrameGroup& group, const File& file) {
-		erase();
+	static void drawFrameGroup(FrameGroup& group, const File& file) {
 		group.initColors();
 		group.draw(file);
 	}
 
 
-	void drawFirstCycle(
+	static void drawFirstCycle(
 			const File& file, const future<void>& readThread,
-			function<void(FrameGroup&&)> onFrameGroupRelease
+			const function<void(FrameGroup&&)>& onFrameGroupRelease
 	) {
 		alert(L"Loading...");
 		
 		if (!parallel) {
 			int percent = -1;
 
-			while (readThread.wait_for(ZERO) != future_status::ready) {
+			while (readThread.wait_for(0ms) != future_status::ready) {
 				if (percent != frameGroupsProcessPercent) {
 					percent = frameGroupsProcessPercent;
 					alert(L"Loading... " + std::to_wstring(percent) + L"%");
@@ -45,8 +42,6 @@ namespace ncv {
 
 				this_thread::yield();
 			}
-
-			timeout(-1);
 
 			lock_guard<mutex> lock(frameGroupsMutex);
 
@@ -76,7 +71,7 @@ namespace ncv {
 
 					frameGroupsMutex.unlock();
 
-					if (readThread.wait_for(ZERO) == future_status::ready) {
+					if (readThread.wait_for(0ms) == future_status::ready) {
 						break;
 					}
 				}
@@ -98,8 +93,10 @@ namespace ncv {
 			});
 
 			// Проверяем, что гифка содержит больше 1 кадра
-			if (isGif && (groups.size() > 1 || (groups.size() == 1 && groups[0].size() > 1))) {
+			if (groups.size() > 1 || (groups.size() == 1 && groups[0].size() > 1)) {
 				while (!stopped) {
+					FrameGroup::resetTimestamps();
+
 					for (FrameGroup& group : groups) {
 						drawFrameGroup(group, file);
 					}

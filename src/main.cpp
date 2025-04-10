@@ -1,6 +1,7 @@
 #include "main.h"
 #include "reader.h"
 #include "drawer.h"
+#include "double_buffer.h"
 #include "interthread.h"
 #include <chrono>
 #include <future>
@@ -8,21 +9,23 @@
 #include "debug.h"
 
 namespace ncv {
-	
 	namespace this_thread = std::this_thread;
+	using namespace std::chrono_literals;
 	using std::vector;
 	using std::ref;
 	using std::async;
 	using std::launch;
 	using std::future;
 	using std::future_status;
-
-	static const std::chrono::milliseconds ZERO(0);
+	using std::lock_guard;
+	using std::mutex;
 
 	static bool needRedraw = false;
 
-	void readFromConsole(const vector<File>& files, size_t& index) {
+	static void readFromConsole(const vector<File>& files, size_t& index) {
 		for (;;) {
+			lock_guard<mutex> lock(ncursesMutex);
+
 			switch (getch()) {
 				case KEY_LEFT: case 'a':
 					index = (index + files.size() - 1) % files.size();
@@ -30,6 +33,10 @@ namespace ncv {
 				
 				case KEY_RIGHT: case 'd':
 					index = (index + 1) % files.size();
+					break;
+				
+				case 'r':
+					needRedraw = true;
 					break;
 
 				case 27: {
@@ -45,6 +52,8 @@ namespace ncv {
 				case 'q':
 					return;
 			}
+
+			this_thread::yield();
 		}
 	}
 
@@ -76,47 +85,54 @@ namespace ncv {
 	}
 
 
-	static void start(future<void>& readThread, future<void>& drawThread,
+	static void start(future<void>& readThread, future<void>& drawThread, future<void>& dbufThread,
 					  const vector<File>& files, size_t index) {
 		stopped = false;
 		readThread = startFuture(readFrameGroups, ref(files[index]));
 		drawThread = startFuture(drawFrameGroups, ref(files[index]), ref(readThread));
+		dbufThread = startFuture(renderDoubleBuffered, ref(readThread));
 	}
 
 
-	static void stop(future<void>& readThread, future<void>& drawThread) {
+	static void stop(future<void>& readThread, future<void>& drawThread, future<void>& dbufThread) {
 		stopped = true;
 		readThread.wait();
 		drawThread.wait();
+		dbufThread.wait();
 	}
 
 
 	void run(const vector<File>& files, size_t index) {
-		future<void> readThread, drawThread;
-		start(readThread, drawThread, files, index);
+		drawBuffer1 = newwin(LINES, COLS, 0, 0);
+		drawBuffer2 = newwin(LINES, COLS, 0, 0);
+
+		future<void> readThread, drawThread, dbufThread;
+		start(readThread, drawThread, dbufThread, files, index);
 
 		future<void> consoleThread = startFuture(readFromConsole, ref(files), ref(index));
 		size_t oldIndex = index;
 
-		while (consoleThread.wait_for(ZERO) != future_status::ready) {
+		while (consoleThread.wait_for(0ms) != future_status::ready) {
 			if (exPtr != nullptr) {
 				std::rethrow_exception(exPtr);
 			}
 
 			if (needRedraw) {
-				// TODO
+				stop(readThread, drawThread, dbufThread);
+				start(readThread, drawThread, dbufThread, files, index);
+				needRedraw = false;
 			}
 
 			if (oldIndex != index) {
 				oldIndex = index;
 
-				stop(readThread, drawThread);
-				start(readThread, drawThread, files, index);
+				stop(readThread, drawThread, dbufThread);
+				start(readThread, drawThread, dbufThread, files, index);
 			}
 
 			this_thread::yield();
 		}
 
-		stop(readThread, drawThread);
+		stop(readThread, drawThread, dbufThread);
 	}
 }

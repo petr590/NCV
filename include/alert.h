@@ -12,27 +12,21 @@
 
 namespace ncv {
 
-	/** Устанавливает режим "больших символов" */
-	void setBigCharsMode(bool enabled);
-
-	/** Переключает режим "больших символов" */
-	extern void toggleBigCharsMode();
-
 	/**
 	 * Выводит текст по центру экрана.
 	 * Возвращает координаты начала и конца занятой области (координаты конца невключительно).
 	 * Запоминает выведенное сообщение.
 	 */
-	extern std::tuple<int, int, int, int> alert(const std::wstring& message);
+	std::tuple<int, int, int, int> alert(const std::wstring& message);
 
 	/**
 	 * Выводит последнее выведенное сообщение на экран.
 	 * Возвращает то, что вернёт функция alert, или нули, если ничего не выведено.
 	 */
-	extern std::tuple<int, int, int, int> realert();
+	std::tuple<int, int, int, int> realert();
 
 	/** Сбрасывает последнее выведенное сообщение */
-	extern void resetAlerted();
+	void resetAlerted();
 }
 
 #endif /* NCV_ALERT_H */

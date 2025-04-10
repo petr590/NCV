@@ -19,6 +19,25 @@ namespace ncv {
 	}
 
 
+	class timer {
+		const char* const message;
+		clock_t start;
+
+	public:
+		timer(const char* message):
+				message(message),
+				start(clock()) {}
+
+		~timer() {
+			finish();
+		}
+		
+		void finish();
+	};
+	
+	#define TIMER(name, str) timer name(str)
+
+
 	namespace debug {
 		template<typename Iterator>
 		ostream& outIterators(ostream& out, Iterator begin, Iterator end,
@@ -61,8 +80,6 @@ namespace ncv {
 
 	template<typename K, typename V>
 	ostream& operator<<(ostream& out, const std::map<K, V>& m) {
-		// return debug::outIterators(out << '{', m.begin(), m.end(),
-		// 		[] (ostream& output, const std::map<K, V>::const_iterator& it) { return output << it->first << " = " << it->second; }) << '}';
 		return debug::outIterators(out << '{', m.begin(), m.end()) << '}';
 	}
 
@@ -73,4 +90,6 @@ namespace ncv {
 	}
 }
 
+#else
+#define TIMER(name, str)
 #endif /* !defined(NDEBUG) && !defined(NCV_DEBUG_H) */

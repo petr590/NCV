@@ -17,7 +17,7 @@ namespace ncv {
 	class Frame {
 		static const int BPP = 3;
 
-		AVFrame* avFrame = NULL;
+		AVFrame* avFrame = nullptr;
 
 	public:
 		Frame(AVFrame*, AVCodecContext*, SwsContext*, int newWidth, int newHeight);

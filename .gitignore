@@ -1,5 +1,7 @@
 debug/
 release/
+build/
 examples/
+cppcheck/
 .vscode
 *.py
