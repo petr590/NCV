@@ -322,11 +322,7 @@ namespace ncv {
 
 				sleepUntilFrame(frame);
 
-				// timer t2("ncursesMutex.lock()");
-				// ncursesMutex.lock();
-				// t2.finish();
-
-				TIMER(t3, "ncurses draw");
+				TIMER(t2, "ncurses draw");
 
 				for (const auto& colorAndCoords : colorCoords) {
 					chtype colorPair = COLOR_PAIR(indexTable.at(colorAndCoords.first));
@@ -348,11 +344,7 @@ namespace ncv {
 
 				sleepUntilFrame(frame);
 
-				// timer t1("ncursesMutex.lock()");
-				// ncursesMutex.lock();
-				// t1.finish();
-
-				TIMER(t2, "ncurses draw");
+				TIMER(t1, "ncurses draw");
 
 				for (int y = sy; y <= ey-1; y += 2) {
 					for (int x = sx; x <= ex; x += 1) {
@@ -384,18 +376,11 @@ namespace ncv {
 
 			prev2 = prev1;
 			prev1 = &frame;
-
-			wmove(buffer, LINES - 1, 0);
-			wprintw(buffer,
-					"%ls, %.2f %s",
-					file.wpath().c_str(), file.normalizedSize(), file.sizeUnit()
-			);
+			file.printToWindow(buffer);
 
 			lock_guard<mutex> lock(ncursesMutex);
 			swap(drawBuffer1, drawBuffer2);
 			updateStdscr = true;
-
-			// ncursesMutex.unlock();
 		}
 	}
 

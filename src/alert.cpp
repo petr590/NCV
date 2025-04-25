@@ -2,8 +2,6 @@
 #include "args.h"
 #include "ncurses_wrap.h"
 #include <vector>
-#include <cstring>
-#include <stdexcept>
 
 namespace ncv {
 	using std::size;

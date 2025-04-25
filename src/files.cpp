@@ -3,13 +3,14 @@
 #include <algorithm>
 
 namespace ncv {
+	namespace fs = std::filesystem;
 	using std::string;
 	using std::wstring;
 	using std::vector;
 	using std::pair;
 
 	File::File(const fs::path& path):
-			fPath(path), fSize(fs::file_size(path)) {
+			fPath(path), size(fs::file_size(path)) {
 		
 		// path.wstring() падает с ошибкой, поэтому так
 
@@ -21,7 +22,7 @@ namespace ncv {
 
 		static const vector<const char*> units = {"B", "KB", "MB", "GB", "TB"};
 
-		float value = this->size();
+		float value = size;
 		size_t i = 0;
 
 		while (value >= 1024 && i < units.size() - 1) {
@@ -29,8 +30,8 @@ namespace ncv {
 			i += 1;
 		}
 
-		fNormalizedSize = value;
-		fSizeUnit = units[i];
+		normalizedSize = value;
+		sizeUnit = units[i];
 	}
 	
 	const fs::path& File::path() const {
@@ -41,16 +42,13 @@ namespace ncv {
 		return fWpath;
 	}
 	
-	size_t File::size() const {
-		return fSize;
-	}
-
-	float File::normalizedSize() const {
-		return fNormalizedSize;
-	}
-
-	const char* File::sizeUnit() const {
-		return fSizeUnit;
+	void File::printToWindow(WINDOW* win) const {
+		wmove(win, LINES - 1, 0);
+		
+		wprintw(
+			win, "%ls, %.2f %s",
+			fWpath.c_str(), normalizedSize, sizeUnit
+		);
 	}
 	
 	bool File::operator<(const File& other) const {
@@ -81,7 +79,8 @@ namespace ncv {
 			".png", ".jpg", ".jpeg", ".gif", ".bmp", ".psd", ".pic", ".pnm", ".raw", ".tiff",
 			".3g2", ".3gp", ".asf", ".avi", ".cine", ".dash", ".dv", ".f4v", ".flic", ".flv",
 			".gxf", ".h261", ".h263", ".h264", ".hevc", ".ifv", ".ipod", ".ismv", ".ivf", ".m4a",
-			".m4v", ".mj2", ".mjpeg", ".mov", ".mp4", ".mpeg", ".mtv", ".mxf", ".nuv", ".ogv",".r3d", ".rm", ".sol", ".swf", ".vc1", ".vivo", ".vob", ".webm", ".wtv", ".wve"
+			".m4v", ".mj2", ".mjpeg", ".mov", ".mp4", ".mpeg", ".mtv", ".mxf", ".nuv", ".ogv",
+			".r3d", ".rm", ".sol", ".swf", ".vc1", ".vivo", ".vob", ".webm", ".wtv", ".wve"
 		};
 
 
@@ -96,10 +95,7 @@ namespace ncv {
 				}
 
 				string ext = path.extension();
-
-				transform(ext.begin(), ext.end(), ext.begin(),
-    				[] (unsigned char c) { return tolower(c); });
-				
+				transform(ext.begin(), ext.end(), ext.begin(), tolower);
 				
 				if (find(extensions.begin(), extensions.end(), ext) != extensions.end()) {
 					files.emplace_back(path);

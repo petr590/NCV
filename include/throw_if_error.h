@@ -10,14 +10,6 @@ extern "C" {
 
 /* Надстройка над функциями C, которые возвращают коды состояния. */
 namespace ncv {
-	template<typename... Args>
-	inline void exitIfError(int result, const char* message, Args... args) {
-		if (result != 0) {
-			av_log(nullptr, AV_LOG_ERROR, message, args...);
-			exit(AVFORMAT_ERROR);
-		}
-	}
-
 	#define throwIfError(func) __throwIfError<>(func, __FILE__, __LINE__, #func)
 
 	#define throwIfErrorExcept(func, ...) __throwIfError<__VA_ARGS__>(func, __FILE__, __LINE__, #func)

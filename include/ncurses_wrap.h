@@ -2,7 +2,6 @@
 #define NCV_NCURSES_WRAP_H
 
 #include <ncurses.h>
-#include <cmath>
 #include <tuple>
 
 void ncurses_start();

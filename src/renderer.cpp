@@ -1,4 +1,4 @@
-#include "drawer.h"
+#include "renderer.h"
 #include "frame_group.h"
 #include "interthread.h"
 #include "alert.h"
@@ -19,17 +19,25 @@ namespace ncv {
 
 	int frameGroupsProcessPercent = 0;
 
-	static void drawFrameGroup(FrameGroup& group, const File& file) {
+	static void renderFrameGroup(FrameGroup& group, const File& file) {
 		group.initColors();
 		group.draw(file);
 	}
 
 
-	static void drawFirstCycle(
+	static void renderFirstCycle(
 			const File& file, const future<void>& readThread,
 			const function<void(FrameGroup&&)>& onFrameGroupRelease
 	) {
+		// Очищаем буфера и окно после предыдущих отрисовок
+		wclear(drawBuffer1);
+		wclear(drawBuffer2);
+		clear();
+
 		alert(L"Loading...");
+
+		// Сбрасываем состояние после предыдущих отрисовок
+		FrameGroup::resetTimestamps();
 		
 		if (!parallel) {
 			int percent = -1;
@@ -38,6 +46,7 @@ namespace ncv {
 				if (percent != frameGroupsProcessPercent) {
 					percent = frameGroupsProcessPercent;
 					alert(L"Loading... " + std::to_wstring(percent) + L"%");
+					file.printToWindow(stdscr);
 				}
 
 				this_thread::yield();
@@ -46,7 +55,7 @@ namespace ncv {
 			lock_guard<mutex> lock(frameGroupsMutex);
 
 			for (FrameGroup& group : frameGroups) {
-				drawFrameGroup(group, file);
+				renderFrameGroup(group, file);
 				onFrameGroupRelease(std::move(group));
 
 				if (stopped) break;
@@ -64,7 +73,7 @@ namespace ncv {
 
 					frameGroupsMutex.unlock();
 
-					drawFrameGroup(group, file);
+					renderFrameGroup(group, file);
 
 					onFrameGroupRelease(std::move(group));
 				} else {
@@ -82,13 +91,13 @@ namespace ncv {
 	}
 
 
-	void drawFrameGroups(const File& file, const future<void>& readThread) {
+	void renderFrameGroups(const File& file, const future<void>& readThread) {
 		bool isGif = file.path().extension() == ".gif";
 
 		if (isGif) {
 			vector<FrameGroup> groups;
 
-			drawFirstCycle(file, readThread, [&] (FrameGroup&& group) {
+			renderFirstCycle(file, readThread, [&] (FrameGroup&& group) {
 				groups.emplace_back(std::move(group));
 			});
 
@@ -98,13 +107,13 @@ namespace ncv {
 					FrameGroup::resetTimestamps();
 
 					for (FrameGroup& group : groups) {
-						drawFrameGroup(group, file);
+						renderFrameGroup(group, file);
 					}
 				}
 			}
 
 		} else {
-			drawFirstCycle(file, readThread, [] (FrameGroup&&) {});
+			renderFirstCycle(file, readThread, [] (FrameGroup&&) {});
 		}
 	}
 }

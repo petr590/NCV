@@ -1,29 +1,37 @@
 #include "main.h"
 #include "args.h"
-#include "files.h"
 #include "ncurses_wrap.h"
-#include "throw_if_error.h"
-#include "reader.h"
+#include "error_codes.h"
+#include <csignal>
 
 extern "C" {
-	#include <libavcodec/avcodec.h>
-	#include <libswscale/swscale.h>
+	#include <libavutil/log.h>
 }
-
-#include <filesystem>
-#include <csignal>
 
 #include "debug.h"
 
 namespace ncv {
 	using std::signal;
 
-	void onError(int signum) {
-		if (!isendwin()) {
-			ncurses_end();
+	static const uint8_t SIGNALS[] = { SIGINT, SIGQUIT, SIGABRT, SIGFPE, SIGSEGV, SIGTERM };
+
+	void on_signal(int) {
+		exit(EXIT_SUCCESS);
+	}
+
+	void add_signal_handlers() {
+		struct sigaction action = {};
+		action.sa_handler = on_signal;
+		
+		sigemptyset(&action.sa_mask);
+
+		for (int sig : SIGNALS) {
+			sigaddset(&action.sa_mask, sig);
 		}
 
-		signal(signum, SIG_DFL);
+		for (int sig : SIGNALS) {
+			sigaction(sig, &action, nullptr);
+		}
 	}
 }
 
@@ -33,14 +41,18 @@ int main(int argc, const char* argv[]) {
 	using std::tie;
 
 	setlocale(LC_ALL, "");
-
 	srand(time(nullptr));
 
-	signal(SIGSEGV, onError);
-	signal(SIGABRT, onError);
+	add_signal_handlers();
+
+	atexit([] () {
+		if (!isendwin()) {
+			ncurses_end();
+		}
+	});
+
 
 	const char* fileOrDir = parseArgs(argc, argv);
-
 
 	initscr();
 
@@ -80,9 +92,5 @@ int main(int argc, const char* argv[]) {
 
 
 	run(files, startIndex);
-
-	ncurses_end();
-
-
 	return EXIT_SUCCESS;
 }

@@ -1,10 +1,9 @@
 #include "args.h"
 #include "error_codes.h"
-#include "ncurses_wrap.h"
-#include "drawer.h"
-#include "alert.h"
 #include <map>
+#include <string>
 #include <functional>
+#include <filesystem>
 
 extern "C" {
 	#include <libavutil/log.h>
@@ -18,6 +17,7 @@ namespace ncv {
 
 	#define RN "\r\n"
 	
+	namespace fs = std::filesystem;
 	using std::map;
 	using std::string;
 	using std::function;

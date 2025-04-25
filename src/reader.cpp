@@ -6,7 +6,6 @@
 #include "debug.h"
 
 namespace ncv {
-
 	using std::make_unique;
 
 	static void readStreams(AVFormatContext* context, AVStream* videoStream, AVStream* audioStream) {

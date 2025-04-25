@@ -1,5 +1,7 @@
-#if !defined(NDEBUG) && !defined(NCV_DEBUG_H)
+#ifndef NCV_DEBUG_H
 #define NCV_DEBUG_H
+
+#ifndef NDEBUG
 
 #include <fstream>
 #include <vector>
@@ -92,4 +94,6 @@ namespace ncv {
 
 #else
 #define TIMER(name, str)
-#endif /* !defined(NDEBUG) && !defined(NCV_DEBUG_H) */
+#endif /* NDEBUG */
+
+#endif /* NCV_DEBUG_H */

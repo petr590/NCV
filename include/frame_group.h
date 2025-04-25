@@ -4,7 +4,6 @@
 #include "palette.h"
 #include "frame.h"
 #include "files.h"
-#include <future>
 
 namespace ncv {
 	class FrameGroup {

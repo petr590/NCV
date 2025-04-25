@@ -1,7 +1,6 @@
 #ifndef NCV_RGB_H
 #define NCV_RGB_H
 
-#include <cmath>
 #include <tuple>
 
 namespace ncv {

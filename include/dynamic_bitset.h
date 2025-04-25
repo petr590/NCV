@@ -1,8 +1,8 @@
 #ifndef NCV_DYNAMIC_BITSET_H
 #define NCV_DYNAMIC_BITSET_H
 
-#include <vector>
 #include <cstdint>
+#include <vector>
 #include <ostream>
 
 namespace ncv {

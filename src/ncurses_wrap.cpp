@@ -1,6 +1,7 @@
 #include "ncurses_wrap.h"
 #include "args.h"
 #include <cstdlib>
+#include <cmath>
 
 void ncurses_start() {
 	curs_set(false);
@@ -16,6 +17,8 @@ void ncurses_start() {
 }
 
 void ncurses_end() {
+	printf("ncurses_end\n");
+	use_default_colors();
 	clear();
 	refresh();
 
